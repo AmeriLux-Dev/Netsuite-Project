@@ -39,7 +39,11 @@ if (missing.length > 0) {
 /** `1234567_SB1` becomes the `1234567-sb1` host label NetSuite uses. */
 const accountDomainLabel = accountId.toLowerCase().replace(/_/g, '-');
 const tokenEndpoint = `https://${accountDomainLabel}.suitetalk.api.netsuite.com/services/rest/auth/oauth2/v1/token`;
-const restletEndpoint = `https://${accountDomainLabel}.restlets.api.netsuite.com/app/site/hosting/restlet.nl`;
+/** Restlets answer on the restlet domain; Suitelets on the application domain. Both take the same bearer token. */
+const upstreamEndpoints = {
+    restlet: `https://${accountDomainLabel}.restlets.api.netsuite.com/app/site/hosting/restlet.nl`,
+    suitelet: `https://${accountDomainLabel}.app.netsuite.com/app/site/hosting/scriptlet.nl`,
+} as const;
 
 function base64Url(input: Buffer | string): string {
     return Buffer.from(input).toString('base64').replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
@@ -103,10 +107,10 @@ async function fetchAccessToken(): Promise<string> {
 const app = express();
 app.use(express.json({ limit: '5mb' }));
 
-/** Forwards to the restlet named by the incoming `script` and `deploy` query parameters. */
-app.all('/api/restlet', async (request: Request, response: Response) => {
+/** Forwards to the script named by the incoming `script` and `deploy` query parameters. */
+async function forwardToNetSuite(kind: keyof typeof upstreamEndpoints, request: Request, response: Response): Promise<void> {
     try {
-        const target = new URL(restletEndpoint);
+        const target = new URL(upstreamEndpoints[kind]);
         for (const [key, value] of Object.entries(request.query)) {
             if (typeof value === 'string') target.searchParams.set(key, value);
         }
@@ -121,7 +125,7 @@ app.all('/api/restlet', async (request: Request, response: Response) => {
             Accept: 'application/json',
         };
         const hasBody = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method) && request.body && Object.keys(request.body).length > 0;
-        console.log(`[dev-proxy] ${request.method} ${target.searchParams.get('script')}/${target.searchParams.get('deploy')}`);
+        console.log(`[dev-proxy] ${request.method} ${kind} ${target.searchParams.get('script')}/${target.searchParams.get('deploy')}`);
 
         const upstream = await fetch(target, { method: request.method, headers, body: hasBody ? JSON.stringify(request.body) : undefined });
         const text = await upstream.text();
@@ -130,10 +134,13 @@ app.all('/api/restlet', async (request: Request, response: Response) => {
         if (contentType) response.setHeader('Content-Type', contentType);
         response.send(text);
     } catch (error) {
-        console.error('[dev-proxy] restlet call failed', error);
+        console.error(`[dev-proxy] ${kind} call failed`, error);
         response.status(502).json({ status: 502, error: error instanceof Error ? error.message : 'proxy failure', data: null });
     }
-});
+}
+
+app.all('/api/restlet', (request: Request, response: Response) => forwardToNetSuite('restlet', request, response));
+app.all('/api/suitelet', (request: Request, response: Response) => forwardToNetSuite('suitelet', request, response));
 
 app.listen(port, () => {
     console.log(`[dev-proxy] listening on http://localhost:${port} for ${accountId || '(no account configured)'}`);

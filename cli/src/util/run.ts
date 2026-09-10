@@ -1,6 +1,4 @@
 import { spawn, type StdioOptions } from 'node:child_process';
-import { existsSync } from 'node:fs';
-import path from 'node:path';
 
 export interface RunCommandOptions {
     cwd: string;
@@ -64,16 +62,4 @@ export async function isCommandAvailable(command: string): Promise<boolean> {
     } catch {
         return false;
     }
-}
-
-/** The project-local binary for a package, with the `.cmd` shim on Windows. */
-export function resolveLocalBinary(projectDir: string, binaryName: string): string | undefined {
-    const candidates = IS_WINDOWS
-        ? [`${binaryName}.cmd`, binaryName]
-        : [binaryName];
-    for (const candidate of candidates) {
-        const fullPath = path.join(projectDir, 'node_modules', '.bin', candidate);
-        if (existsSync(fullPath)) return fullPath;
-    }
-    return undefined;
 }

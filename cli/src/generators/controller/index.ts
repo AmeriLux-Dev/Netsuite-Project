@@ -16,6 +16,7 @@ export interface GenerateControllerOptions {
     config: NetSuiteProjectConfig;
     controllerName: string;
     methods: HttpMethod[];
+    /** Serve the endpoints from a Suitelet instead of a Restlet. The endpoints are the same either way. */
     suitelet: boolean;
 }
 
@@ -51,14 +52,6 @@ async function fileExists(filePath: string): Promise<boolean> {
     }
 }
 
-async function writeNewFile(filePath: string, content: string): Promise<void> {
-    if (await fileExists(filePath)) {
-        throw new ControllerGenerationError(`${filePath} already exists; refusing to overwrite.`);
-    }
-    await fs.mkdir(path.dirname(filePath), { recursive: true });
-    await fs.writeFile(filePath, content, 'utf8');
-}
-
 export function insertScriptsEntry(netsuiteSource: string, entry: string, controllerName: string): string {
     if (new RegExp(`^\\s*${controllerName}:\\s*\\{`, 'm').test(netsuiteSource)) {
         throw new ControllerGenerationError(`common/netsuite.ts already has a scripts.${controllerName} entry.`);
@@ -71,7 +64,10 @@ export function insertScriptsEntry(netsuiteSource: string, entry: string, contro
     return `${netsuiteSource.slice(0, lineStart)}${entry}${netsuiteSource.slice(lineStart)}`;
 }
 
-/** Writes the controller, its SDF object, the shared types, the client API module, and the scripts entry. Never overwrites. */
+/**
+ * Writes `api/src/controllers/<name>/` (the transport file plus one endpoint per method), the SDF
+ * object, the shared types, the client API module, and the scripts entry. Never overwrites.
+ */
 export async function generateController(options: GenerateControllerOptions): Promise<GeneratedController> {
     const templates = CONTROLLER_TEMPLATES[options.config.template];
     if (!templates) {
@@ -85,8 +81,8 @@ export async function generateController(options: GenerateControllerOptions): Pr
     const objectProblem = validateObjectName(objectName, options.config.prefix);
     if (objectProblem) throw new ControllerGenerationError(objectProblem);
 
-    if (!options.suitelet && options.methods.length === 0) {
-        throw new ControllerGenerationError('A restlet needs at least one method.');
+    if (options.methods.length === 0) {
+        throw new ControllerGenerationError('A controller needs at least one method.');
     }
 
     const context: RenderContext = {
@@ -98,20 +94,19 @@ export async function generateController(options: GenerateControllerOptions): Pr
             prefix: options.config.prefix,
             appName: options.config.appName,
             appTitle: toTitleCase(options.config.appName),
+            scriptKind: options.suitelet ? 'suitelet' : 'restlet',
         },
         flags: {
             hasGet: options.methods.includes('get'),
             hasPost: options.methods.includes('post'),
             hasPut: options.methods.includes('put'),
             hasDelete: options.methods.includes('delete'),
+            isSuitelet: options.suitelet,
         },
     };
 
     const projectDir = options.projectDir;
-    const controllerPath = path.join(projectDir, 'api', 'src', 'controllers', `${options.controllerName}Controller.ts`);
-    const objectPath = path.join(projectDir, 'netsuite', 'Objects', `customscript_${options.config.prefix}_${objectName}.xml`);
-    const typesPath = path.join(projectDir, 'common', 'types', `${options.controllerName}.ts`);
-    const clientApiPath = path.join(projectDir, 'client', 'src', 'api', `${options.controllerName}Api.ts`);
+    const controllerDir = path.join(projectDir, 'api', 'src', 'controllers', options.controllerName);
     const netsuitePath = path.join(projectDir, 'common', 'netsuite.ts');
 
     const netsuiteSource = await fs.readFile(netsuitePath, 'utf8').catch(() => {
@@ -120,25 +115,33 @@ export async function generateController(options: GenerateControllerOptions): Pr
     const scriptsEntry = renderTemplateString(templates.scriptsEntry, context, 'scriptsEntry');
     const updatedNetsuiteSource = insertScriptsEntry(netsuiteSource, scriptsEntry, options.controllerName);
 
-    const plannedFiles: Array<{ filePath: string; content: string }> = options.suitelet
-        ? [
-            { filePath: controllerPath, content: renderTemplateString(templates.suiteletController, context, 'suiteletController') },
-            { filePath: objectPath, content: renderTemplateString(templates.suiteletObject, context, 'suiteletObject') },
-        ]
-        : [
-            { filePath: controllerPath, content: renderTemplateString(templates.restletController, context, 'restletController') },
-            { filePath: objectPath, content: renderTemplateString(templates.restletObject, context, 'restletObject') },
-            { filePath: typesPath, content: renderTemplateString(templates.sharedTypes, context, 'sharedTypes') },
-            { filePath: clientApiPath, content: renderTemplateString(templates.clientApi, context, 'clientApi') },
-        ];
+    const ControllerName = toPascalCase(options.controllerName);
+    const plannedFiles: Array<{ filePath: string; content: string }> = [
+        { filePath: path.join(controllerDir, `${options.controllerName}Controller.ts`), content: renderTemplateString(templates.controller, context, 'controller') },
+        { filePath: path.join(controllerDir, 'endpoints', 'index.ts'), content: renderTemplateString(templates.endpointsIndex, context, 'endpointsIndex') },
+        ...options.methods.map((method) => ({
+            filePath: path.join(controllerDir, 'endpoints', `${method}${ControllerName}.ts`),
+            content: renderTemplateString(templates.endpoint[method], context, `endpoint.${method}`),
+        })),
+        {
+            filePath: path.join(projectDir, 'netsuite', 'Objects', `customscript_${options.config.prefix}_${objectName}.xml`),
+            content: renderTemplateString(options.suitelet ? templates.suiteletObject : templates.restletObject, context, 'object'),
+        },
+        { filePath: path.join(projectDir, 'common', 'types', `${options.controllerName}.ts`), content: renderTemplateString(templates.sharedTypes, context, 'sharedTypes') },
+        { filePath: path.join(projectDir, 'client', 'src', 'api', `${options.controllerName}Api.ts`), content: renderTemplateString(templates.clientApi, context, 'clientApi') },
+    ];
 
+    if (await fileExists(controllerDir)) {
+        throw new ControllerGenerationError(`${controllerDir} already exists; refusing to overwrite.`);
+    }
     for (const planned of plannedFiles) {
         if (await fileExists(planned.filePath)) {
             throw new ControllerGenerationError(`${planned.filePath} already exists; refusing to overwrite.`);
         }
     }
     for (const planned of plannedFiles) {
-        await writeNewFile(planned.filePath, planned.content);
+        await fs.mkdir(path.dirname(planned.filePath), { recursive: true });
+        await fs.writeFile(planned.filePath, planned.content, 'utf8');
     }
     await fs.writeFile(netsuitePath, updatedNetsuiteSource, 'utf8');
 

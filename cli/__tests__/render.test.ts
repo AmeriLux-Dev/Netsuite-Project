@@ -31,6 +31,30 @@ describe('renderTemplateString', () => {
         expect(renderTemplateString('x {{#if other}}yes{{/if}} y', context)).toBe('x  y');
     });
 
+    it('evaluates nested blocks, including same-kind nesting', () => {
+        const source = [
+            'start',
+            '{{#unless other}}',
+            'outer',
+            '{{#if performanceTracker}}',
+            'inner-kept',
+            '{{/if}}',
+            '{{#if other}}',
+            'inner-dropped',
+            '{{/if}}',
+            '{{/unless}}',
+            '{{#if performanceTracker}}',
+            '{{#if performanceTracker}}',
+            'deep',
+            '{{/if}}',
+            '{{/if}}',
+            'end',
+            '',
+        ].join('\n');
+        expect(renderTemplateString(source, context)).toBe('start\nouter\ninner-kept\ndeep\nend\n');
+        expect(() => renderTemplateString('{{#if other}}open only', context, 'f')).toThrow(/unclosed/);
+    });
+
     it('handles CRLF sources', () => {
         expect(renderTemplateString('a\r\n{{#if other}}\r\nno\r\n{{/if}}\r\nb\r\n', context)).toBe('a\r\nb\r\n');
     });
@@ -99,5 +123,29 @@ describe('renderTemplateDirectory', () => {
         expect(await fs.readFile(path.join(target, 'NOTES.md'), 'utf8')).toBe('keep me');
         expect(await fs.readFile(path.join(target, 'raw.bin'))).toEqual(Buffer.from([0x7b, 0x7b, 0x00]));
         await expect(fs.access(path.join(target, 'node_modules'))).rejects.toBeDefined();
+    });
+
+    it('honours template.json conditional paths and never copies the manifest itself', async () => {
+        const root = await fs.mkdtemp(path.join(os.tmpdir(), 'render-manifest-'));
+        scratchDirs.push(root);
+        const source = path.join(root, 'template');
+        await fs.mkdir(path.join(source, 'guarded', 'nested'), { recursive: true });
+        await fs.writeFile(path.join(source, 'template.json'), JSON.stringify({
+            conditionalPaths: { 'probity.config.ts': 'probity', 'guarded': 'probity', 'plain.md': '!probity' },
+        }));
+        await fs.writeFile(path.join(source, 'probity.config.ts'), 'export default {};');
+        await fs.writeFile(path.join(source, 'guarded', 'nested', 'a.ts'), 'export {};');
+        await fs.writeFile(path.join(source, 'plain.md'), '# plain');
+        await fs.writeFile(path.join(source, 'always.md'), '# always');
+
+        const withProbity = path.join(root, 'with');
+        const written = await renderTemplateDirectory(source, withProbity, { tokens: {}, flags: { probity: true } });
+        expect(written).toEqual(['always.md', 'guarded/nested/a.ts', 'probity.config.ts']);
+
+        const withoutProbity = path.join(root, 'without');
+        const writtenWithout = await renderTemplateDirectory(source, withoutProbity, { tokens: {}, flags: { probity: false } });
+        expect(writtenWithout).toEqual(['always.md', 'plain.md']);
+
+        await expect(renderTemplateDirectory(source, path.join(root, 'bad'), { tokens: {}, flags: {} })).rejects.toThrow(/unknown flag/);
     });
 });

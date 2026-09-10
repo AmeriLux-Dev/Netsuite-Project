@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run generate*)",
+      "Bash(npm run typecheck*)",
+      "Bash(npm run lint*)",
+      "Bash(npm run build*)",
+      "Bash(npm test*)",
+      "Bash(npx vitest *)",
+      "Bash(npx tsc *)",
+      "Bash(npx eslint *)"
+    ]
+{{#if probity}}
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|Write|Edit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "npx @nizos/probity --agent claude-code"
+          }
+        ]
+      }
+    ]
+  }
+{{/if}}
+{{#unless probity}}
+  }
+{{/unless}}
+}

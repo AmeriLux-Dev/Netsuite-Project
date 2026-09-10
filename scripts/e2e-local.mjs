@@ -11,7 +11,7 @@
  *   node scripts/e2e-local.mjs --keep     # leave the scratch project in place for inspection
  */
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -80,8 +80,26 @@ run('node', [
     path.join(repoRoot, 'cli', 'dist', 'index.js'), projectDir,
     '--local-template', path.join(repoRoot, 'templates', 'react-app'),
     '--prefix', 'demo', '--author', 'ci', '--description', 'End-to-end scaffold check',
-    '--yes', '--no-install', '--no-git', '--no-deploy',
+    '--probity', '--yes', '--no-install', '--no-git',
 ], repoRoot);
+assertEqual(existsSync(path.join(projectDir, 'probity.config.ts')), true, '--probity emits probity.config.ts');
+assertEqual(JSON.parse(readFileSync(path.join(projectDir, '.claude', 'settings.json'), 'utf8')).hooks !== undefined, true, '--probity wires the Claude Code hook');
+
+// The default (no Probity) variant must render cleanly too; it is checked without an install.
+const plainDir = path.join(e2eRoot, 'PlainApp');
+if (existsSync(plainDir)) rmSync(plainDir, { recursive: true, force: true });
+run('node', [
+    path.join(repoRoot, 'cli', 'dist', 'index.js'), plainDir,
+    '--local-template', path.join(repoRoot, 'templates', 'react-app'),
+    '--prefix', 'plain', '--author', 'ci', '--yes', '--no-install', '--no-git',
+], repoRoot);
+assertEqual(existsSync(path.join(plainDir, 'probity.config.ts')), false, 'default scaffold has no probity.config.ts');
+const plainSettings = JSON.parse(readFileSync(path.join(plainDir, '.claude', 'settings.json'), 'utf8'));
+assertEqual(plainSettings.hooks, undefined, 'default scaffold has no hook');
+assertEqual(JSON.parse(readFileSync(path.join(plainDir, 'package.json'), 'utf8')).devDependencies['@nizos/probity'], undefined, 'default scaffold does not depend on probity');
+assertEqual(JSON.parse(readFileSync(path.join(plainDir, '.netsuite-project.json'), 'utf8')).features, { performanceTracker: false, probity: false }, 'features recorded');
+assertEqual(existsSync(path.join(plainDir, 'template.json')), false, 'template manifest is not copied');
+rmSync(plainDir, { recursive: true, force: true });
 
 run('npm', ['install', '--no-audit', '--no-fund'], projectDir);
 run('npm', ['run', 'generate'], projectDir);
@@ -92,7 +110,7 @@ run('npm', ['run', 'build'], projectDir);
 
 const fileCabinet = path.join(projectDir, 'netsuite', 'FileCabinet', 'SuiteScripts', 'DemoApp');
 assertEqual(listFiles(fileCabinet), [
-    'api/controllers/customersController.js',
+    'api/controllers/customers/customersController.js',
     'api/host/homeController.js',
     'api/host/host.js',
     'client/app.js',
@@ -113,13 +131,31 @@ run('npm', ['run', 'typecheck'], projectDir);
 run('npm', ['run', 'lint'], projectDir);
 run('npm', ['run', 'build', '-w', 'api'], projectDir);
 assertEqual(listFiles(path.join(fileCabinet, 'api')), [
-    'controllers/customersController.js',
-    'controllers/ordersController.js',
+    'controllers/customers/customersController.js',
+    'controllers/orders/ordersController.js',
     'host/homeController.js',
     'host/host.js',
 ], 'api output after add controller');
+assertEqual(existsSync(path.join(projectDir, 'api', 'src', 'controllers', 'orders', 'endpoints', 'postOrders.ts')), true, 'orders endpoints written');
+
+// A suitelet-backed controller shares the endpoint shape and must build and typecheck the same way.
+run('node', [path.join(repoRoot, 'cli', 'dist', 'index.js'), 'add', 'controller', 'reports', '--suitelet'], projectDir);
+run('npm', ['run', 'typecheck'], projectDir);
+run('npm', ['run', 'build', '-w', 'api'], projectDir);
+assertEqual(existsSync(path.join(fileCabinet, 'api', 'controllers', 'reports', 'reportsController.js')), true, 'suitelet controller built');
+assertEqual(/@NScriptType Suitelet/.test(readFileSync(path.join(fileCabinet, 'api', 'controllers', 'reports', 'reportsController.js'), 'utf8').slice(0, 200)), true, 'suitelet banner');
 assertEqual(existsSync(path.join(projectDir, 'netsuite', 'Objects', 'customscript_demo_orders.xml')), true, 'orders SDF object written');
-assertEqual(readFileSync(path.join(projectDir, 'common', 'netsuite.ts'), 'utf8').includes('orders: { scriptId: \'customscript_demo_orders\''), true, 'scripts.orders registered');
+assertEqual(readFileSync(path.join(projectDir, 'common', 'netsuite.ts'), 'utf8').includes("orders: { kind: 'restlet', scriptId: 'customscript_demo_orders'"), true, 'scripts.orders registered');
+assertEqual(readFileSync(path.join(projectDir, 'common', 'netsuite.ts'), 'utf8').includes("reports: { kind: 'suitelet', scriptId: 'customscript_demo_reports'"), true, 'scripts.reports registered as suitelet');
+
+// The deploy script must refuse while the example controller is present, without touching NetSuite.
+mkdirSync(path.join(projectDir, 'netsuite'), { recursive: true });
+const projectJsonPath = path.join(projectDir, 'project.json');
+writeFileSync(projectJsonPath, JSON.stringify({ defaultAuthId: 'placeholder' }));
+const deployAttempt = spawnSync('node', ['scripts/deploy.mjs'], { cwd: projectDir, encoding: 'utf8', shell: isWindows });
+assertEqual(deployAttempt.status, 1, 'deploy refuses while the example is present');
+assertEqual(/Refusing to deploy/.test(deployAttempt.stderr), true, 'deploy names the example files');
+rmSync(projectJsonPath);
 
 const leftoverTokens = listFiles(projectDir)
     .filter((file) => !file.startsWith('node_modules/') && !file.startsWith('netsuite/FileCabinet/'))

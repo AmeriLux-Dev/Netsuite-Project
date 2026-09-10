@@ -4,10 +4,8 @@ import path from 'node:path';
 import { defaultPrefixForProjectName, toKebabCase, toPascalCase, toTitleCase } from '../naming.js';
 import { PROJECT_CONFIG_FILE_NAME } from '../projectConfig.js';
 import { isInteractiveTerminal, promptConfirm, promptSelect, promptText, ui } from '../prompts.js';
-import { deployProject } from '../steps/deploy.js';
 import { initializeGitRepository, readGitUserName } from '../steps/git.js';
 import { installDependencies } from '../steps/install.js';
-import { listSuiteCloudAuthIds, runSuiteCloudAccountSetup, writeProjectJson } from '../steps/suitecloud.js';
 import { DEFAULT_TEMPLATE_REPOSITORY, downloadTemplate } from '../template/fetch.js';
 import { renderTemplateDirectory, type RenderContext } from '../template/render.js';
 import {
@@ -26,10 +24,9 @@ export interface CreateCommandOptions {
     author?: string;
     description?: string;
     performanceTracker?: boolean;
+    probity?: boolean;
     install?: boolean;
     git?: boolean;
-    deploy?: boolean;
-    authId?: string;
     yes?: boolean;
     ref?: string;
     repo?: string;
@@ -46,10 +43,10 @@ export interface CreateAnswers {
     author: string;
     description: string;
     performanceTracker: boolean;
+    probity: boolean;
     projectType: ProjectType;
     install: boolean;
     git: boolean;
-    deploy: boolean;
 }
 
 export class CreateCommandError extends Error {
@@ -125,6 +122,13 @@ export async function resolveCreateAnswers(options: CreateCommandOptions): Promi
             : false;
     }
 
+    let probity = options.probity;
+    if (probity === undefined || (!explicit.has('probity') && interactive)) {
+        probity = interactive
+            ? await promptConfirm('Add Probity guardrails for AI coding agents (Claude Code hook)?', false)
+            : false;
+    }
+
     let projectType: ProjectType = 'react-app';
     if (options.projectType !== undefined) {
         if (!isProjectType(options.projectType)) {
@@ -143,16 +147,7 @@ export async function resolveCreateAnswers(options: CreateCommandOptions): Promi
         ? (options.git ?? true)
         : await promptConfirm('Initialise a git repository and make the first commit?', true);
 
-    let deploy = false;
-    if (install) {
-        deploy = explicit.has('deploy') || !interactive
-            ? (options.deploy ?? false)
-            : await promptConfirm('Deploy to a NetSuite account now? (needs the SuiteCloud CLI and Java 17+)', false);
-    } else if (options.deploy) {
-        ui.warn('Skipping deploy because dependencies are not being installed.');
-    }
-
-    return { projectName, targetDir, prefix, author, description, performanceTracker, projectType, install, git, deploy };
+    return { projectName, targetDir, prefix, author, description, performanceTracker, probity, projectType, install, git };
 }
 
 export function buildRenderContext(answers: CreateAnswers, templateRef: string, cliVersion: string): RenderContext {
@@ -169,9 +164,13 @@ export function buildRenderContext(answers: CreateAnswers, templateRef: string, 
             year: String(new Date().getFullYear()),
             templateRef,
             projectType: answers.projectType,
+            // JSON literals for .netsuite-project.json, where a token sits outside a string.
+            performanceTrackerJson: String(answers.performanceTracker),
+            probityJson: String(answers.probity),
         },
         flags: {
             performanceTracker: answers.performanceTracker,
+            probity: answers.probity,
         },
     };
 }
@@ -199,36 +198,10 @@ async function acquireTemplate(options: CreateCommandOptions, projectType: Proje
     return { templateDir, templateRef: `${repository}@${ref}`, cleanup: () => fs.rm(scratchDir, { recursive: true, force: true }) };
 }
 
-async function chooseDeployAuthId(projectDir: string, requestedAuthId: string | undefined, interactive: boolean): Promise<string | undefined> {
-    if (requestedAuthId) {
-        await writeProjectJson(projectDir, requestedAuthId);
-        return requestedAuthId;
-    }
-    const entries = await listSuiteCloudAuthIds(projectDir);
-    if (!interactive) {
-        if (entries.length === 0) return undefined;
-        await writeProjectJson(projectDir, entries[0].authId);
-        return entries[0].authId;
-    }
-
-    const CREATE_NEW = '__create_new__';
-    const choice = await promptSelect<string>('Which NetSuite account should this deploy to?', [
-        ...entries.map((entry) => ({ value: entry.authId, label: entry.authId, hint: [entry.roleAndCompany, entry.host].filter(Boolean).join(' | ') })),
-        { value: CREATE_NEW, label: 'Create a new authentication id…', hint: 'runs suitecloud account:setup' },
-    ]);
-    if (choice !== CREATE_NEW) {
-        await writeProjectJson(projectDir, choice);
-        return choice;
-    }
-    const ok = await runSuiteCloudAccountSetup(projectDir);
-    return ok ? 'from-account-setup' : undefined;
-}
-
 export async function runCreate(options: CreateCommandOptions, cliVersion: string): Promise<void> {
     ui.intro(`create-netsuite-project v${cliVersion}`);
     const answers = await resolveCreateAnswers(options);
     const appName = toPascalCase(answers.projectName);
-    const interactive = !options.yes && isInteractiveTerminal();
 
     const template = await acquireTemplate(options, answers.projectType, cliVersion);
     try {
@@ -254,7 +227,7 @@ export async function runCreate(options: CreateCommandOptions, cliVersion: strin
         ui.step('Installing dependencies (npm install)');
         const result = await installDependencies(answers.targetDir);
         installed = result.ok;
-        if (!result.ok) ui.warn(`npm install failed. Run \`${result.manualCommand}\` in ${answers.targetDir} and then \`npm run deploy\`.`);
+        if (!result.ok) ui.warn(`npm install failed. Run \`${result.manualCommand}\` in ${answers.targetDir}.`);
     }
 
     if (answers.git) {
@@ -265,25 +238,6 @@ export async function runCreate(options: CreateCommandOptions, cliVersion: strin
         else ui.warn(`git setup failed: ${result.detail}`);
     }
 
-    let deployed = false;
-    if (answers.deploy && installed) {
-        ui.step('Deploying to NetSuite');
-        const authId = await chooseDeployAuthId(answers.targetDir, options.authId, interactive);
-        if (!authId) {
-            ui.warn('No SuiteCloud authentication id available. Run `npx suitecloud account:setup` in the project, then `npm run deploy`.');
-        } else {
-            const result = await deployProject(answers.targetDir);
-            deployed = result.ok;
-            if (!result.ok) {
-                if (result.looksLikeAuthFailure) {
-                    ui.warn('Deployment failed with what looks like an authentication problem. Run `npx suitecloud account:setup` in the project, then `npm run deploy`.');
-                } else {
-                    ui.warn(`Deployment failed at ${result.failedStage}. Fix the errors above and run \`npm run deploy\`.`);
-                }
-            }
-        }
-    }
-
     const relativeDir = path.relative(process.cwd(), answers.targetDir) || '.';
     const displayDir = relativeDir.startsWith('..') ? answers.targetDir : relativeDir;
     const nextSteps = [
@@ -291,8 +245,14 @@ export async function runCreate(options: CreateCommandOptions, cliVersion: strin
         ...(installed ? [] : ['npm install']),
         'cp client/.env.example client/.env   # then fill in the sandbox OAuth 2.0 values',
         'npm run dev                          # Vite + local restlet proxy',
-        ...(deployed ? [] : ['npm run deploy                       # builds, then suitecloud project:deploy']),
-        `Open the Suitelet in NetSuite: Customization › Scripting › Scripts › "${toTitleCase(answers.projectName)} Home"`,
+        '',
+        'The customers controller and page are an example. Replace them with your own',
+        '(npm run add:controller -- <name>) or delete them; npm run deploy refuses to upload',
+        'the example so it never clutters a File Cabinet.',
+        '',
+        'npx suitecloud account:setup         # once per account, writes the gitignored project.json',
+        'npm run deploy                       # build, then suitecloud project:deploy',
+        `The Suitelet then appears under Customization › Scripting › Scripts as "${toTitleCase(answers.projectName)} Home"`,
     ];
     ui.note(nextSteps.join('\n'), 'Next steps');
     ui.outro(`${appName} is ready.`);

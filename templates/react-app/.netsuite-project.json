@@ -3,5 +3,9 @@
   "templateRef": "{{templateRef}}",
   "appName": "{{appName}}",
   "prefix": "{{prefix}}",
-  "cliVersion": "{{cliVersion}}"
+  "cliVersion": "{{cliVersion}}",
+  "features": {
+    "performanceTracker": {{performanceTrackerJson}},
+    "probity": {{probityJson}}
+  }
 }

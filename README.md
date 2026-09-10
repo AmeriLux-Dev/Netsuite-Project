@@ -8,20 +8,22 @@ npm create netsuite-project@latest MyApp
 npx create-netsuite-project MyApp
 ```
 
-The generated project is a small monorepo: a Vite + React 19 + Tailwind 4 client served by a Suitelet, a webpack-built SuiteScript API where **every controller is its own Restlet**, a shared `common/` workspace holding every NetSuite identifier in one file, typed data access through [`@amerilux/netsuite-repository`](https://www.npmjs.com/package/@amerilux/netsuite-repository), instrumented `N/*` calls through [`@amerilux/netsuite-wrapper`](https://www.npmjs.com/package/@amerilux/netsuite-wrapper), Vitest everywhere, ESLint, and deployment scripts around the SuiteCloud CLI.
+The generated project is a small monorepo: a Vite + React 19 + Tailwind 4 client served by a Suitelet, a webpack-built SuiteScript API where **every controller is its own script** (transport-agnostic endpoints served by a Restlet or a Suitelet, switchable in one file), a shared `common/` workspace holding every NetSuite identifier in one file, typed data access through [`@amerilux/netsuite-repository`](https://www.npmjs.com/package/@amerilux/netsuite-repository), instrumented `N/*` calls through [`@amerilux/netsuite-wrapper`](https://www.npmjs.com/package/@amerilux/netsuite-wrapper), Vitest everywhere, ESLint, and deployment scripts around the SuiteCloud CLI.
 
 ## What you get
 
 ```
 MyApp/
   common/netsuite.ts        record types, field ids, script ids, File Cabinet names
-  api/src/controllers/      one Restlet per file (customersController.ts to start)
+  api/src/controllers/      one folder per controller: endpoints/ + a Restlet or Suitelet file (customers/ to start)
   api/src/host/             the Suitelet that serves the SPA
   api/src/models/           decorated models; `npm run generate` writes the typed context
   client/src/               React app: TanStack Router (file-based routes under src/routes, hash history), TanStack Query, Tailwind
   client/server.ts          local dev proxy that signs OAuth 2.0 calls to your sandbox
   netsuite/                 SDF project: manifest, deploy.xml, Objects/, FileCabinet/ (build output)
   scripts/deploy.mjs        build → suitecloud project:deploy (or file:upload only)
+  CLAUDE.md                 project brief for Claude Code
+  probity.config.ts         agent guardrails (Probity), wired up in .claude/settings.json; only with --probity
 ```
 
 Build output lands in `netsuite/FileCabinet/SuiteScripts/MyApp/`: `client/app.js` plus one AMD file per script under `api/`. Each API file starts with the `@NApiVersion` / `@NScriptType` banner NetSuite expects.
@@ -37,9 +39,9 @@ Every prompt has a flag, so the command works unattended:
 | Author or team | `--author` | `git config user.name` |
 | Description | `--description` | a one-liner |
 | PerformanceTracker telemetry | `--performance-tracker` / `--no-performance-tracker` | off |
+| Probity guardrails for AI agents | `--probity` / `--no-probity` | off |
 | Install dependencies | `--install` / `--no-install` | yes |
 | Initialise git | `--git` / `--no-git` | yes |
-| Deploy now | `--deploy` / `--no-deploy` (with `--auth-id`) | no |
 
 `--yes` accepts every default. `--ref <gitref>`, `--repo <owner/repo>` and `--local-template <path>` control where the template comes from; by default the CLI downloads `templates/react-app` from the release tag matching its own version.
 
@@ -53,9 +55,11 @@ Inside a generated project:
 npm run add:controller -- orders --methods get,post
 ```
 
-writes the controller, its SDF script object, shared request/response types, a client API module, and registers `scripts.orders` in `common/netsuite.ts`. Add `--suitelet` for a Suitelet instead of a Restlet.
+writes `api/src/controllers/orders/` with one endpoint file per method, its SDF script object, shared request/response types, a client API module, and registers `scripts.orders` in `common/netsuite.ts`. Add `--suitelet` to serve the same endpoints from a Suitelet instead of a Restlet.
 
 ## Deploying
+
+The scaffold never deploys. The customers controller and page it generates are marked as example code, and the project's `npm run deploy` refuses to run while any marked file is present, so the example never clutters a File Cabinet. Replace it with `npm run add:controller`, or delete it, then:
 
 ```sh
 npx suitecloud account:setup   # once per account; writes the gitignored project.json
@@ -63,11 +67,13 @@ npm run deploy                 # build, project:adddependencies, project:deploy
 npm run deploy:files           # build, then upload only File Cabinet files
 ```
 
+`--allow-example` overrides the guard for a throwaway sandbox.
+
 The client bundle URL carries the version and a build id, so a new deploy is picked up without a manual cache bust.
 
 ## Requirements
 
-- Node 20 or newer
+- Node 22 or newer
 - Java 17 or newer, for the SuiteCloud CLI
 - git (optional; used for the first commit and the default author)
 
@@ -75,7 +81,7 @@ The client bundle URL carries the version and a build id, so a new deploy is pic
 
 ```
 cli/                  the published package (name: create-netsuite-project); only dist/ ships
-templates/react-app/  the template the CLI renders; tokens look like {{appName}}
+templates/react-app/  the template the CLI renders; tokens look like {{appName}}, template.json gates files on flags
 scripts/              private-reference scan and the local end-to-end check
 .github/workflows/    CI (CLI checks, scaffold on Linux and Windows, secret scan) and release
 ```

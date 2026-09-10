@@ -39,11 +39,21 @@ export const sps = {} as const;
 /** Avalara identifiers (example third-party group; fill in or delete). */
 export const avalara = {} as const;
 
-/** Every script this application deploys. The client calls restlets through these ids. */
-export const scripts = {
-    home: { scriptId: 'customscript_{{prefix}}_home', deployId: 'customdeploy_{{prefix}}_home' },
-    customers: { scriptId: 'customscript_{{prefix}}_customers', deployId: 'customdeploy_{{prefix}}_customers' },
-    // @netsuite-project:scripts
-} as const;
+/** How a script is reached over HTTP; the client builds the URL from it. */
+export type ScriptKind = 'restlet' | 'suitelet';
 
-export type ScriptRef = (typeof scripts)[keyof typeof scripts];
+export interface ScriptRef {
+    kind: ScriptKind;
+    scriptId: string;
+    deployId: string;
+}
+
+/**
+ * Every script this application deploys. The client calls API controllers through these entries;
+ * `kind` must match the controller's @NScriptType and its SDF object.
+ */
+export const scripts = {
+    home: { kind: 'suitelet', scriptId: 'customscript_{{prefix}}_home', deployId: 'customdeploy_{{prefix}}_home' },
+    customers: { kind: 'restlet', scriptId: 'customscript_{{prefix}}_customers', deployId: 'customdeploy_{{prefix}}_customers' },
+    // @netsuite-project:scripts
+} as const satisfies Record<string, ScriptRef>;

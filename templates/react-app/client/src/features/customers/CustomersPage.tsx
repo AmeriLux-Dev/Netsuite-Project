@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { useCustomers } from './useCustomers';
 
+// @netsuite-project:example — scaffold example page. Replace or delete it together with the
+// customers controller; npm run deploy refuses to upload files carrying this marker.
+
 export function CustomersPage() {
     const [search, setSearch] = useState('');
     const customers = useCustomers({ search: search.trim() || undefined });

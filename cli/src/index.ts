@@ -23,13 +23,12 @@ const createCommand = program
     .option('--description <text>', 'One-line project description.')
     .option('--performance-tracker', 'Enable PerformanceTracker telemetry through netsuite-wrapper.')
     .option('--no-performance-tracker', 'Disable telemetry (the default).')
+    .option('--probity', 'Add Probity guardrails for AI coding agents (probity.config.ts + Claude Code hook).')
+    .option('--no-probity', 'Skip Probity (the default).')
     .option('--install', 'Run npm install after scaffolding (default).')
     .option('--no-install', 'Skip npm install.')
     .option('--git', 'Initialise a git repository with a first commit (default).')
     .option('--no-git', 'Skip git.')
-    .option('--deploy', 'Deploy to NetSuite after installing.')
-    .option('--no-deploy', 'Skip deployment (the default).')
-    .option('--auth-id <id>', 'SuiteCloud authentication id to deploy with (skips the account picker).')
     .option('-y, --yes', 'Accept every default instead of prompting.')
     .option('--ref <gitref>', 'Template git ref to download (default: v<cli version>).')
     .option('--repo <owner/repo>', 'GitHub repository holding the templates.')
@@ -49,10 +48,10 @@ const addCommand = program.command('add').description('Add a piece to an existin
 
 addCommand
     .command('controller')
-    .description('Add a restlet (or suitelet) controller with its SDF object, shared types and client API module.')
-    .argument('<name>', 'camelCase controller name, e.g. orders (becomes ordersController).')
-    .option('--methods <list>', 'Comma-separated HTTP methods for a restlet: get,post,put,delete.', 'get')
-    .option('--suitelet', 'Generate a Suitelet instead of a Restlet.')
+    .description('Add a controller folder (transport file + one endpoint per method) with its SDF object, shared types and client API module.')
+    .argument('<name>', 'camelCase controller name, e.g. orders (becomes controllers/orders/).')
+    .option('--methods <list>', 'Comma-separated HTTP methods: get,post,put,delete.', 'get')
+    .option('--suitelet', 'Serve the endpoints from a Suitelet instead of a Restlet.')
     .action(async (name: string, options: { methods?: string; suitelet?: boolean }) => {
         await runAddController(name, options);
     });

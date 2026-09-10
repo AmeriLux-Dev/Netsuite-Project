@@ -1,11 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 import { scripts } from 'common/netsuite';
 
-vi.mock('@/api/restletClient', () => ({
-    callRestlet: vi.fn(async () => ({ customers: [], limit: 50 })),
+vi.mock('@/api/apiClient', () => ({
+    callEndpoint: vi.fn(async () => ({ customers: [], limit: 50 })),
 }));
 
-import { callRestlet } from '@/api/restletClient';
+import { callEndpoint } from '@/api/apiClient';
 import { fetchCustomers } from '@/api/customersApi';
 import { customersQueryKey, customersQueryOptions } from '@/features/customers/useCustomers';
 
@@ -18,9 +18,9 @@ describe('customersQueryKey', () => {
 });
 
 describe('fetchCustomers', () => {
-    it('calls the customers restlet with GET and the request as query parameters', async () => {
+    it('calls the customers controller with GET and the request as query parameters', async () => {
         await fetchCustomers({ search: 'acme', limit: 10 });
-        expect(callRestlet).toHaveBeenCalledWith(scripts.customers, 'GET', expect.objectContaining({ query: { search: 'acme', limit: 10 } }));
+        expect(callEndpoint).toHaveBeenCalledWith(scripts.customers, 'GET', expect.objectContaining({ query: { search: 'acme', limit: 10 } }));
     });
 });
 

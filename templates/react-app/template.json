@@ -1,0 +1,5 @@
+{
+  "conditionalPaths": {
+    "probity.config.ts": "probity"
+  }
+}
