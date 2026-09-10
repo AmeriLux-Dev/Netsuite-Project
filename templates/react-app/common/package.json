@@ -1,9 +1,0 @@
-{
-  "name": "{{appNameKebab}}-common",
-  "version": "0.1.0",
-  "private": true,
-  "description": "Types and NetSuite identifiers shared by the api and client workspaces.",
-  "scripts": {
-    "typecheck": "tsc --noEmit -p tsconfig.json"
-  }
-}

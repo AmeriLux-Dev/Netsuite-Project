@@ -43,7 +43,7 @@ Every prompt has a flag, so the command works unattended:
 | Install dependencies | `--install` / `--no-install` | yes |
 | Initialise git | `--git` / `--no-git` | yes |
 
-`--yes` accepts every default. `--ref <gitref>`, `--repo <owner/repo>` and `--local-template <path>` control where the template comes from; by default the CLI downloads `templates/react-app` from the release tag matching its own version.
+`--yes` accepts every default. `--ref <gitref>`, `--repo <owner/repo>` and `--local-template <path>` control where the template comes from; by default the CLI downloads `react-app` from [netsuite-project-templates](https://github.com/AmeriLux-Dev/netsuite-project-templates) at the ref pinned in its own `package.json`, so a given CLI version always scaffolds the same template.
 
 Script ids are `customscript_<prefix>_<name>` and NetSuite caps them at 40 characters, so the prefix is 2 to 10 lowercase characters and controller names are checked against the remaining budget.
 
@@ -79,28 +79,33 @@ The client bundle URL carries the version and a build id, so a new deploy is pic
 
 ## Repository layout
 
+This repository holds only the CLI. The templates it renders live in [netsuite-project-templates](https://github.com/AmeriLux-Dev/netsuite-project-templates), one folder per project type.
+
 ```
-cli/                  the published package (name: create-netsuite-project); only dist/ ships
-templates/react-app/  the template the CLI renders; tokens look like {{appName}}, template.json gates files on flags
-scripts/              private-reference scan and the local end-to-end check
-.github/workflows/    CI (CLI checks, scaffold on Linux and Windows, secret scan) and release
+src/                  the CLI: commands, prompts, template download and render, the controller generator
+__tests__/            unit tests (vitest)
+scripts/              private-reference scan and the end-to-end wrapper
+.github/workflows/    CI (checks, scaffold with the pinned template on Linux and Windows, secret scan) and release
 ```
+
+`templateSource` in `package.json` pins the template repository and git ref a release downloads by default; `--repo` and `--ref` override it at run time.
 
 ### Developing
 
 ```sh
 npm install
-npm test                    # CLI unit tests
-npm run e2e:local           # build the CLI, scaffold from templates/react-app into the OS temp dir, install, typecheck, lint, test, build
-node cli/dist/index.js ./Sandbox --local-template templates/react-app --prefix sbx --yes --no-install --no-git
+npm test                    # unit tests
+npm run e2e                 # build, then run the template repository's end-to-end check against this build
+node dist/index.js ./Sandbox --local-template ../netsuite-project-templates/react-app --prefix sbx --yes --no-install --no-git
 ```
+
+`npm run e2e` expects a checkout of the template repository at `../netsuite-project-templates`; set `NETSUITE_PROJECT_TEMPLATES_DIR` to use another path. CI runs the same check against the pinned ref.
 
 ### Releasing
 
-1. Bump `cli/package.json` version.
-2. Tag `v<version>` and push the tag. The release workflow verifies the tag matches, runs the checks and publishes with provenance.
-
-The tag is also the template ref the published CLI downloads, so templates and CLI always ship together.
+1. If the template changed, tag and push a release in the template repository first, then set `templateSource.ref` here to that tag.
+2. Bump `version` in `package.json`.
+3. Tag `v<version>` and push the tag. The release workflow verifies the tag matches, checks that the pinned template ref exists, runs the checks and publishes with provenance.
 
 ## Security
 

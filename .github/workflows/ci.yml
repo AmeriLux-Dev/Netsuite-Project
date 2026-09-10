@@ -25,7 +25,6 @@ jobs:
       - run: npm run build
       - name: Published package contains only dist, README and LICENSE
         run: |
-          cd cli
           npm pack --dry-run --json > pack.json
           node -e "
             const files = require('./pack.json')[0].files.map((f) => f.path);
@@ -35,7 +34,9 @@ jobs:
           "
 
   scaffold:
-    name: Scaffold from local template (${{ matrix.os }})
+    # Scaffolds from the template repository at the ref pinned in package.json (templateSource):
+    # exactly what a release of this CLI downloads.
+    name: Scaffold with the pinned template (${{ matrix.os }})
     needs: cli
     strategy:
       fail-fast: false
@@ -48,12 +49,24 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      - name: Read the pinned template source
+        id: template
+        shell: bash
+        run: |
+          echo "repository=$(node -p "require('./package.json').templateSource.repository")" >> "$GITHUB_OUTPUT"
+          echo "ref=$(node -p "require('./package.json').templateSource.ref")" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ steps.template.outputs.repository }}
+          ref: ${{ steps.template.outputs.ref }}
+          path: netsuite-project-templates
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 21
       - run: npm ci
-      - run: node scripts/e2e-local.mjs
+      - run: npm run build
+      - run: node netsuite-project-templates/scripts/e2e.mjs --cli .
 
   secrets:
     name: Secret and private-reference scan

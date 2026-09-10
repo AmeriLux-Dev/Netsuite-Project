@@ -1,4 +1,0 @@
-<manifest projecttype="ACCOUNTCUSTOMIZATION">
-  <projectname>{{appName}}</projectname>
-  <frameworkversion>1.0</frameworkversion>
-</manifest>

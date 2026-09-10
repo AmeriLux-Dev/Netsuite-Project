@@ -1,21 +1,62 @@
 {
-  "name": "create-netsuite-project-monorepo",
-  "private": true,
+  "name": "create-netsuite-project",
   "version": "0.1.0",
-  "description": "Scaffold CLI and project templates for Suitelet-hosted NetSuite applications.",
+  "description": "Scaffold a Suitelet-hosted React application for NetSuite: Vite client, webpack AMD API, one restlet per controller.",
   "license": "MIT",
+  "type": "module",
+  "bin": {
+    "create-netsuite-project": "dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
   "engines": {
     "node": ">=22"
   },
-  "workspaces": [
-    "cli"
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AmeriLux-Dev/create-netsuite-project.git"
+  },
+  "homepage": "https://github.com/AmeriLux-Dev/create-netsuite-project#readme",
+  "bugs": {
+    "url": "https://github.com/AmeriLux-Dev/create-netsuite-project/issues"
+  },
+  "keywords": [
+    "netsuite",
+    "suitescript",
+    "suitelet",
+    "restlet",
+    "react",
+    "scaffold",
+    "create"
   ],
+  "templateSource": {
+    "repository": "AmeriLux-Dev/netsuite-project-templates",
+    "ref": "v0.1.0"
+  },
   "scripts": {
-    "build": "npm run build -w cli",
-    "test": "npm test -w cli",
-    "typecheck": "npm run typecheck -w cli",
-    "lint": "npm run lint -w cli",
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "lint": "eslint .",
     "check:private-refs": "node scripts/check-no-private-refs.mjs",
-    "e2e:local": "node scripts/e2e-local.mjs"
+    "e2e": "node scripts/e2e.mjs",
+    "prepublishOnly": "npm run typecheck && npm test && npm run build"
+  },
+  "dependencies": {
+    "@clack/prompts": "^1.8.0",
+    "commander": "^15.0.0",
+    "tar": "^7.5.22"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^22.20.2",
+    "eslint": "^10.10.0",
+    "globals": "^17.12.0",
+    "tsup": "^8.5.1",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.70.0",
+    "vitest": "^5.0.0"
   }
 }
