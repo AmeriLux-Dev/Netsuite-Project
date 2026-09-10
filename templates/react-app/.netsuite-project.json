@@ -1,0 +1,7 @@
+{
+  "template": "{{projectType}}",
+  "templateRef": "{{templateRef}}",
+  "appName": "{{appName}}",
+  "prefix": "{{prefix}}",
+  "cliVersion": "{{cliVersion}}"
+}

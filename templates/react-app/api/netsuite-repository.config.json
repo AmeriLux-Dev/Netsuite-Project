@@ -1,0 +1,7 @@
+{
+  "models": ["src/models/**/*.ts", "!src/models/generated/**"],
+  "outDir": "src/models/generated",
+  "context": { "name": "App", "fileName": "context.gen.ts" },
+  "tsconfig": "tsconfig.json",
+  "repositories": "none"
+}

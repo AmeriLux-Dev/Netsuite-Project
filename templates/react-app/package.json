@@ -1,0 +1,35 @@
+{
+  "name": "{{appNameKebab}}",
+  "version": "0.1.0",
+  "private": true,
+  "description": "{{description}}",
+  "author": "{{author}}",
+  "workspaces": [
+    "common",
+    "api",
+    "client"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "npm run dev -w client",
+    "generate": "npm run generate -w api",
+    "build": "npm run build -w client && npm run build -w api",
+    "deploy": "node scripts/deploy.mjs",
+    "deploy:files": "node scripts/deploy.mjs --files-only",
+    "test": "npm test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "eslint .",
+    "add:controller": "npx --yes create-netsuite-project@{{cliVersion}} add controller"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@oracle/suitecloud-cli": "3.2.0",
+    "eslint": "^10.10.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.12.0",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.70.0"
+  }
+}

@@ -1,0 +1,8 @@
+node_modules/
+dist/
+coverage/
+*.log
+.DS_Store
+*.tsbuildinfo
+# Maintainer-only list of exact private strings for scripts/check-no-private-refs.mjs
+.private-refs.local

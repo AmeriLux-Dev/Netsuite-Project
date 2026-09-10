@@ -1,0 +1,30 @@
+{
+  "name": "{{appNameKebab}}-api",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SuiteScript for {{appTitle}}: one AMD bundle per script, built by webpack.",
+  "scripts": {
+    "generate": "netsuite-repository generate",
+    "prebuild": "npm run generate",
+    "build": "webpack --mode production",
+    "watch": "webpack --watch --mode development",
+    "pretypecheck": "npm run generate",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.test.json",
+    "pretest": "npm run generate",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@amerilux/netsuite-repository": "^0.4.0",
+    "@amerilux/netsuite-wrapper": "^0.3.95"
+  },
+  "devDependencies": {
+    "@hitc/netsuite-types": "^2026.2.2",
+    "@types/node": "^22.20.2",
+    "glob": "^13.0.6",
+    "ts-loader": "^9.6.2",
+    "typescript": "~5.9.3",
+    "vitest": "^5.0.0",
+    "webpack": "^5.110.3",
+    "webpack-cli": "^7.2.3"
+  }
+}

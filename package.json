@@ -1,0 +1,21 @@
+{
+  "name": "create-netsuite-project-monorepo",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Scaffold CLI and project templates for Suitelet-hosted NetSuite applications.",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "workspaces": [
+    "cli"
+  ],
+  "scripts": {
+    "build": "npm run build -w cli",
+    "test": "npm test -w cli",
+    "typecheck": "npm run typecheck -w cli",
+    "lint": "npm run lint -w cli",
+    "check:private-refs": "node scripts/check-no-private-refs.mjs",
+    "e2e:local": "node scripts/e2e-local.mjs"
+  }
+}

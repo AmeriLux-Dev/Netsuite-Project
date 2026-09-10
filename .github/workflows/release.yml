@@ -1,0 +1,38 @@
+name: Release
+
+# Tag v<version> (matching cli/package.json) to publish. The tag doubles as the template ref the
+# published CLI downloads by default, so templates and CLI always ship together.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+          cache: npm
+      - run: npm ci
+      - name: Tag matches cli/package.json version
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          VERSION=$(node -p "require('./cli/package.json').version")
+          if [ "$TAG" != "$VERSION" ]; then
+            echo "Tag v$TAG does not match cli/package.json version $VERSION"; exit 1
+          fi
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - run: cp README.md LICENSE cli/
+      - run: npm publish --provenance --access public
+        working-directory: cli
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

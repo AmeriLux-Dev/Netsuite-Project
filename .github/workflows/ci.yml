@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  cli:
+    name: CLI checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+      - name: Published package contains only dist, README and LICENSE
+        run: |
+          cd cli
+          npm pack --dry-run --json > pack.json
+          node -e "
+            const files = require('./pack.json')[0].files.map((f) => f.path);
+            const allowed = files.every((f) => f.startsWith('dist/') || f === 'package.json' || f === 'README.md' || f === 'LICENSE');
+            if (!allowed) { console.error('Unexpected files in package:', files); process.exit(1); }
+            console.log('Package files:', files.join(', '));
+          "
+
+  scaffold:
+    name: Scaffold from local template (${{ matrix.os }})
+    needs: cli
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - run: npm ci
+      - run: node scripts/e2e-local.mjs
+
+  secrets:
+    name: Secret and private-reference scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scripts/check-no-private-refs.mjs
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
