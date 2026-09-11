@@ -68,6 +68,32 @@ jobs:
       - run: npm run build
       - run: node netsuite-project-templates/scripts/e2e.mjs --cli .
 
+  release-dry-run:
+    # Runs the Release workflow's pre-flight checks and a dry-run publish so a broken release is
+    # caught here rather than after tagging. Cannot exercise the npm Trusted Publisher exchange:
+    # npm only issues OIDC tokens to release.yml.
+    name: Release dry run
+    needs: cli
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+          cache: npm
+      - run: npm ci
+      - name: Pinned template ref exists
+        run: |
+          REPOSITORY=$(node -p "require('./package.json').templateSource.repository")
+          REF=$(node -p "require('./package.json').templateSource.ref")
+          if ! git ls-remote --exit-code "https://github.com/$REPOSITORY.git" "$REF" > /dev/null; then
+            echo "templateSource.ref $REF does not exist on $REPOSITORY. Tag the template repository first, then pin that tag in package.json."; exit 1
+          fi
+          echo "Scaffolds from $REPOSITORY@$REF"
+      - run: npm run build
+      - run: npm publish --access public --dry-run
+
   secrets:
     name: Secret and private-reference scan
     runs-on: ubuntu-latest
