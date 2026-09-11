@@ -15,19 +15,18 @@ The generated project is a small monorepo: a Vite + React 19 + Tailwind 4 client
 ```
 MyApp/
   common/model/             decorated record models; each declares its record type and field ids
-  common/dto/               request and response shapes of each controller, picked from the generated entity types
-  common/types/             api.ts, one endpoint contract per controller, models.gen.ts (generated entity types)
+  common/types/             api.ts (envelope and endpoint types), models.gen.ts (generated entity types)
   common/netsuite.ts        app names, script ids, and any id no model owns
-  api/src/controllers/      one folder per controller: endpoints/ + a Restlet or Suitelet file (user/ and userRoles/ to start)
-  api/src/host/             the Suitelet that serves the SPA
-  api/src/services/         decisions: interpret the request, call repositories, shape the reply
+  api/src/controllers/      one file per controller: shapes, endpoints and the Restlet or Suitelet entry point (userController.ts and userRolesController.ts to start)
+  api/src/services/         decisions: interpret the request, call repositories, shape the reply (<subject>Service.ts)
   api/src/repositories/     query and write functions over dbContext; generated/ comes from `npm run generate`
   api/src/specifications/   query predicates, one module per record type
+  api/src/_lib/, _host/     boilerplate: transport plumbing and the Suitelet that serves the SPA; nothing is added there
   client/src/               React app: TanStack Router (file-based routes under src/routes, hash history), TanStack Query, Tailwind
   client/server.ts          local dev proxy that signs OAuth 2.0 calls to your sandbox
   netsuite/                 SDF project: manifest, deploy.xml, Objects/, FileCabinet/ (build output)
   scripts/deploy.mjs        build → suitecloud project:deploy (or file:upload only)
-  scripts/checkStructure.mjs run by npm run lint: every script's pieces (ids, SDF object, controller, contract, DTOs, client) agree
+  scripts/checkStructure.mjs run by npm run lint: every script's pieces (ids, SDF object, controller, endpoints, client) agree
   .claude/skills/           add-controller: the recipe Claude Code follows to add a controller
   README.md                 the application record: purpose, owners, dependencies, deployment, support, decisions
   HOW-TO-USE.md             how to build, run, test, deploy and extend the project
