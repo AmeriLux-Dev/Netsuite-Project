@@ -18,7 +18,7 @@ MyApp/
   common/dto/               request and response shapes of each controller, picked from the generated entity types
   common/types/             api.ts, one endpoint contract per controller, models.gen.ts (generated entity types)
   common/netsuite.ts        app names, script ids, and any id no model owns
-  api/src/controllers/      one folder per controller: endpoints/ + a Restlet or Suitelet file (customers/ to start)
+  api/src/controllers/      one folder per controller: endpoints/ + a Restlet or Suitelet file (user/ and userRoles/ to start)
   api/src/host/             the Suitelet that serves the SPA
   api/src/services/         decisions: interpret the request, call repositories, shape the reply
   api/src/repositories/     query and write functions over dbContext; generated/ comes from `npm run generate`
@@ -58,19 +58,17 @@ Script ids are `customscript_<prefix>_<name>` and NetSuite caps them at 40 chara
 
 ## Adding a controller
 
-A controller is one deployed script with named endpoints (`orders` with `list`, `byId`, `create`): a scripts entry, DTOs, a contract, one file per endpoint, the controller file, its SDF object and a client API module. The generated project documents the eight pieces in HOW-TO-USE.md, ships an `add-controller` skill for Claude Code that writes them, and its `npm run lint` runs a structure check that fails until they all exist and agree (ids, transport, endpoint names). The `customers` controller is the reference.
+A controller is one deployed script with named endpoints (`orders` with `list`, `byId`, `create`): a scripts entry, DTOs, a contract, one file per endpoint, the controller file, its SDF object and, when the browser calls it, a client API module. The generated project walks through the pieces step by step in HOW-TO-USE.md (adding a controller, an endpoint, a model, a page, a helper script running as another role), ships an `add-controller` skill for Claude Code that follows the same steps, and its `npm run lint` runs a structure check that fails until every piece exists and they agree (ids, transport, endpoint names). The `user` and `userRoles` controllers are the reference.
 
 ## Deploying
 
-The scaffold never deploys. The customers controller and page it generates are marked as example code, and the project's `npm run deploy` refuses to run while any marked file is present, so the example never clutters a File Cabinet. Replace it with your own controller, or delete it, then:
+The scaffold never deploys. The generated project starts with a `user` Restlet (GET `roles`: the caller and every role assigned to them) and the `userRoles` Suitelet it calls, deployed to run as Administrator because a Restlet caller's role cannot read role assignments. When the account is set up:
 
 ```sh
 npx suitecloud account:setup   # once per account; writes the gitignored project.json
 npm run deploy                 # build, project:adddependencies, project:deploy
 npm run deploy:files           # build, then upload only File Cabinet files
 ```
-
-`--allow-example` overrides the guard for a throwaway sandbox.
 
 The client bundle URL carries the version and a build id, so a new deploy is picked up without a manual cache bust.
 
