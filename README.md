@@ -19,8 +19,8 @@ MyApp/
   common/types/             request/response shapes and each controller's endpoint contract
   api/src/controllers/      one folder per controller: endpoints/ + a Restlet or Suitelet file (customers/ to start)
   api/src/host/             the Suitelet that serves the SPA
-  api/src/services/         decisions: open the unit of work, call repositories, shape the reply
-  api/src/repositories/     query and write functions over the unit of work; generated/ comes from `npm run generate`
+  api/src/services/         decisions: interpret the request, call repositories, shape the reply
+  api/src/repositories/     query and write functions, each creating its own context; generated/ comes from `npm run generate`
   api/src/specifications/   query predicates, one module per record type
   client/src/               React app: TanStack Router (file-based routes under src/routes, hash history), TanStack Query, Tailwind
   client/server.ts          local dev proxy that signs OAuth 2.0 calls to your sandbox
