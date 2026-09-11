@@ -4,14 +4,18 @@
  * published package is a single bundled file.
  *
  * Tokens: controllerName (camel), ControllerName (Pascal), controllerTitle, objectName (snake),
- * prefix, appName, appTitle, scriptKind. Flags: hasGet, hasPost, hasPut, hasDelete, isSuitelet.
+ * prefix, appName, appTitle, scriptKind, and the per-endpoint lists the generator builds
+ * (endpointImports, endpointNames, contractEntries, endpointTypeEntries, sharedTypeDeclarations).
+ * The endpoint template also gets endpointName, EndpointName and METHOD.
+ * Flags: hasGet, hasPost, hasPut, hasDelete, isSuitelet.
  */
 
 export interface ControllerTemplateSet {
     /** The transport-specific entry file; `isSuitelet` picks Restlet or Suitelet. */
     controller: string;
     endpointsIndex: string;
-    endpoint: Record<'get' | 'post' | 'put' | 'delete', string>;
+    /** One file per endpoint, rendered with that endpoint's tokens. */
+    endpoint: string;
     restletObject: string;
     suiteletObject: string;
     clientApi: string;
@@ -45,6 +49,7 @@ export const onRequest = defineSuitelet('{{controllerName}}', {{controllerName}}
 import { defineRestlet } from '../../lib/defineRestlet';
 import { {{controllerName}}Endpoints } from './endpoints';
 
+// A Restlet exports only the HTTP methods its endpoints use; an endpoint with a new method adds its export.
 const restlet = defineRestlet('{{controllerName}}', {{controllerName}}Endpoints);
 
 {{#if hasGet}}
@@ -63,53 +68,25 @@ export { restletDelete as delete };
 {{/unless}}
 `;
 
-const REACT_APP_ENDPOINTS_INDEX = String.raw`import { defineEndpoints } from '../../../lib/endpoint';
-{{#if hasGet}}
-import { get{{ControllerName}} } from './get{{ControllerName}}';
-{{/if}}
-{{#if hasPost}}
-import { post{{ControllerName}} } from './post{{ControllerName}}';
-{{/if}}
-{{#if hasPut}}
-import { put{{ControllerName}} } from './put{{ControllerName}}';
-{{/if}}
-{{#if hasDelete}}
-import { delete{{ControllerName}} } from './delete{{ControllerName}}';
-{{/if}}
+const REACT_APP_ENDPOINTS_INDEX = String.raw`import { {{controllerName}}Contract } from 'common/types/{{controllerName}}';
+import { defineEndpoints } from '../../../lib/endpoint';
+{{endpointImports}}
 
-/** One entry per HTTP method; each endpoint lives in its own file next to this one. */
-export const {{controllerName}}Endpoints = defineEndpoints({
-{{#if hasGet}}
-    get: get{{ControllerName}},
-{{/if}}
-{{#if hasPost}}
-    post: post{{ControllerName}},
-{{/if}}
-{{#if hasPut}}
-    put: put{{ControllerName}},
-{{/if}}
-{{#if hasDelete}}
-    delete: delete{{ControllerName}},
-{{/if}}
-});
+/** The controller's endpoints by name, each in its own file next to this one; the contract in common/ gives each its method. */
+export const {{controllerName}}Endpoints = defineEndpoints({{controllerName}}Contract, { {{endpointNames}} });
 `;
 
-function endpointTemplate(verb: 'get' | 'post' | 'put' | 'delete'): string {
-    const Verb = verb.charAt(0).toUpperCase() + verb.slice(1);
-    const METHOD = verb.toUpperCase();
-    return String.raw`import type { {{ControllerName}}${Verb}Request, {{ControllerName}}${Verb}Response } from 'common/types/{{controllerName}}';
+const REACT_APP_ENDPOINT = String.raw`import type { {{ControllerName}}{{EndpointName}}Request, {{ControllerName}}{{EndpointName}}Response } from 'common/types/{{controllerName}}';
 import type { Endpoint } from '../../../lib/endpoint';
 
-// Typed data access lives in the generated context; see controllers/customers/endpoints/getCustomers.ts:
-// import { createAppContext } from '../../../models/generated/context.gen';
+// Endpoints stay thin: call a service, return its result. See controllers/customers/endpoints/list.ts.
 
-/** ${METHOD} {{controllerName}} */
-export const ${verb}{{ControllerName}}: Endpoint<{{ControllerName}}${Verb}Request, {{ControllerName}}${Verb}Response> = (request) => ({
-    message: '${METHOD} {{controllerName}} is not implemented yet',
+/** {{METHOD}} ?endpoint={{endpointName}} */
+export const {{endpointName}}: Endpoint<{{ControllerName}}{{EndpointName}}Request, {{ControllerName}}{{EndpointName}}Response> = (request) => ({
+    message: '{{endpointName}} on {{controllerName}} is not implemented yet',
     request,
 });
 `;
-}
 
 const REACT_APP_RESTLET_OBJECT = String.raw`<restlet scriptid="customscript_{{prefix}}_{{objectName}}">
   <description></description>
@@ -162,99 +139,27 @@ const REACT_APP_SUITELET_OBJECT = String.raw`<suitelet scriptid="customscript_{{
 </suitelet>
 `;
 
-const REACT_APP_CLIENT_API = String.raw`import type {
-{{#if hasGet}}
-    {{ControllerName}}GetRequest,
-    {{ControllerName}}GetResponse,
-{{/if}}
-{{#if hasPost}}
-    {{ControllerName}}PostRequest,
-    {{ControllerName}}PostResponse,
-{{/if}}
-{{#if hasPut}}
-    {{ControllerName}}PutRequest,
-    {{ControllerName}}PutResponse,
-{{/if}}
-{{#if hasDelete}}
-    {{ControllerName}}DeleteRequest,
-    {{ControllerName}}DeleteResponse,
-{{/if}}
-} from 'common/types/{{controllerName}}';
-import { scripts } from 'common/netsuite';
-import { callEndpoint } from './apiClient';
+const REACT_APP_CLIENT_API = String.raw`import { scripts } from 'common/netsuite';
+import { {{controllerName}}Contract } from 'common/types/{{controllerName}}';
+import { createApiClient } from './apiClient';
 
-{{#if hasGet}}
-export function fetch{{ControllerName}}(request: {{ControllerName}}GetRequest = {}): Promise<{{ControllerName}}GetResponse> {
-    return callEndpoint<{{ControllerName}}GetResponse>(scripts.{{controllerName}}, 'GET', { query: request });
-}
-
-{{/if}}
-{{#if hasPost}}
-export function create{{ControllerName}}(request: {{ControllerName}}PostRequest): Promise<{{ControllerName}}PostResponse> {
-    return callEndpoint<{{ControllerName}}PostResponse>(scripts.{{controllerName}}, 'POST', { body: request });
-}
-
-{{/if}}
-{{#if hasPut}}
-export function update{{ControllerName}}(request: {{ControllerName}}PutRequest): Promise<{{ControllerName}}PutResponse> {
-    return callEndpoint<{{ControllerName}}PutResponse>(scripts.{{controllerName}}, 'PUT', { body: request });
-}
-
-{{/if}}
-{{#if hasDelete}}
-export function delete{{ControllerName}}(request: {{ControllerName}}DeleteRequest): Promise<{{ControllerName}}DeleteResponse> {
-    return callEndpoint<{{ControllerName}}DeleteResponse>(scripts.{{controllerName}}, 'DELETE', { body: request });
-}
-
-{{/if}}
+/** One typed function per endpoint of the {{controllerName}} controller: {{controllerName}}Api.<endpoint>(request). */
+export const {{controllerName}}Api = createApiClient(scripts.{{controllerName}}, {{controllerName}}Contract);
 `;
 
-const REACT_APP_SHARED_TYPES = String.raw`// Request and response shapes for the {{controllerName}} controller. Shared by api/ and client/.
+const REACT_APP_SHARED_TYPES = String.raw`// Request and response shapes of the {{controllerName}} controller and its endpoint contract. Shared by api/ and client/.
+import { defineContract } from './api';
 
-{{#if hasGet}}
-export interface {{ControllerName}}GetRequest {
-    [parameter: string]: string | undefined;
+{{sharedTypeDeclarations}}
+/** The request and response of each endpoint of the {{controllerName}} controller. */
+export interface {{ControllerName}}Endpoints {
+{{endpointTypeEntries}}
 }
 
-export interface {{ControllerName}}GetResponse {
-    message: string;
-    request: {{ControllerName}}GetRequest;
-}
-
-{{/if}}
-{{#if hasPost}}
-export interface {{ControllerName}}PostRequest {
-    [field: string]: unknown;
-}
-
-export interface {{ControllerName}}PostResponse {
-    message: string;
-    request: {{ControllerName}}PostRequest;
-}
-
-{{/if}}
-{{#if hasPut}}
-export interface {{ControllerName}}PutRequest {
-    [field: string]: unknown;
-}
-
-export interface {{ControllerName}}PutResponse {
-    message: string;
-    request: {{ControllerName}}PutRequest;
-}
-
-{{/if}}
-{{#if hasDelete}}
-export interface {{ControllerName}}DeleteRequest {
-    [field: string]: unknown;
-}
-
-export interface {{ControllerName}}DeleteResponse {
-    message: string;
-    request: {{ControllerName}}DeleteRequest;
-}
-
-{{/if}}
+/** The {{controllerName}} controller's endpoints by name and method, for defineEndpoints on the server and createApiClient on the client. */
+export const {{controllerName}}Contract = defineContract<{{ControllerName}}Endpoints>({
+{{contractEntries}}
+});
 `;
 
 const REACT_APP_SCRIPTS_ENTRY = String.raw`    {{controllerName}}: { kind: '{{scriptKind}}', scriptId: 'customscript_{{prefix}}_{{objectName}}', deployId: 'customdeploy_{{prefix}}_{{objectName}}' },
@@ -264,12 +169,7 @@ export const CONTROLLER_TEMPLATES: Record<string, ControllerTemplateSet> = {
     'react-app': {
         controller: REACT_APP_CONTROLLER,
         endpointsIndex: REACT_APP_ENDPOINTS_INDEX,
-        endpoint: {
-            get: endpointTemplate('get'),
-            post: endpointTemplate('post'),
-            put: endpointTemplate('put'),
-            delete: endpointTemplate('delete'),
-        },
+        endpoint: REACT_APP_ENDPOINT,
         restletObject: REACT_APP_RESTLET_OBJECT,
         suiteletObject: REACT_APP_SUITELET_OBJECT,
         clientApi: REACT_APP_CLIENT_API,

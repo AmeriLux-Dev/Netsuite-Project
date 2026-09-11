@@ -2,7 +2,7 @@ import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { ControllerGenerationError, generateController, insertScriptsEntry, parseMethods, SCRIPTS_MARKER } from '../src/generators/controller/index.js';
+import { ControllerGenerationError, generateController, insertScriptsEntry, parseEndpoints, SCRIPTS_MARKER } from '../src/generators/controller/index.js';
 import type { NetSuiteProjectConfig } from '../src/projectConfig.js';
 
 const config: NetSuiteProjectConfig = { template: 'react-app', templateRef: 'local', appName: 'DemoApp', prefix: 'demo', cliVersion: '0.0.0-test' };
@@ -13,11 +13,22 @@ const NETSUITE_SOURCE = `export const scripts = {
 } as const;
 `;
 
-describe('parseMethods', () => {
-    it('defaults to get, normalises order and rejects unknown methods', () => {
-        expect(parseMethods(undefined)).toEqual(['get']);
-        expect(parseMethods('post, GET')).toEqual(['get', 'post']);
-        expect(() => parseMethods('get,patch')).toThrow(ControllerGenerationError);
+describe('parseEndpoints', () => {
+    it('defaults to a list endpoint on GET, keeps order, and lets a bare name mean GET', () => {
+        expect(parseEndpoints(undefined)).toEqual([{ name: 'list', method: 'get' }]);
+        expect(parseEndpoints('create:POST, byId, remove:delete')).toEqual([
+            { name: 'create', method: 'post' },
+            { name: 'byId', method: 'get' },
+            { name: 'remove', method: 'delete' },
+        ]);
+    });
+
+    it('rejects bad names, unknown methods, duplicates and reserved names', () => {
+        expect(() => parseEndpoints('ById')).toThrow(ControllerGenerationError);
+        expect(() => parseEndpoints('list:patch')).toThrow(/Unknown method/);
+        expect(() => parseEndpoints('list,list:post')).toThrow(/twice/);
+        expect(() => parseEndpoints('index')).toThrow(/reserved/);
+        expect(() => parseEndpoints('a:get:b')).toThrow(ControllerGenerationError);
     });
 });
 
@@ -44,16 +55,23 @@ describe('generateController', () => {
         await fs.rm(projectDir, { recursive: true, force: true });
     });
 
-    it('writes a restlet controller folder with one endpoint per method, its object, shared types, the client api and the scripts entry', async () => {
-        const result = await generateController({ projectDir, config, controllerName: 'salesOrders', methods: ['get', 'post', 'delete'], suitelet: false });
+    it('writes a restlet controller folder with one file per endpoint, its object, the shared types with the contract, the client api and the scripts entry', async () => {
+        const result = await generateController({
+            projectDir,
+            config,
+            controllerName: 'salesOrders',
+            endpoints: [{ name: 'list', method: 'get' }, { name: 'byId', method: 'get' }, { name: 'create', method: 'post' }, { name: 'remove', method: 'delete' }],
+            suitelet: false,
+        });
 
         expect(result.scriptId).toBe('customscript_demo_sales_orders');
         expect(result.writtenFiles).toEqual([
             'api/src/controllers/salesOrders/salesOrdersController.ts',
             'api/src/controllers/salesOrders/endpoints/index.ts',
-            'api/src/controllers/salesOrders/endpoints/getSalesOrders.ts',
-            'api/src/controllers/salesOrders/endpoints/postSalesOrders.ts',
-            'api/src/controllers/salesOrders/endpoints/deleteSalesOrders.ts',
+            'api/src/controllers/salesOrders/endpoints/list.ts',
+            'api/src/controllers/salesOrders/endpoints/byId.ts',
+            'api/src/controllers/salesOrders/endpoints/create.ts',
+            'api/src/controllers/salesOrders/endpoints/remove.ts',
             'netsuite/Objects/customscript_demo_sales_orders.xml',
             'common/types/salesOrders.ts',
             'client/src/api/salesOrdersApi.ts',
@@ -70,12 +88,21 @@ describe('generateController', () => {
         expect(controller).not.toContain('{{');
 
         const endpointsIndex = await fs.readFile(path.join(projectDir, 'api/src/controllers/salesOrders/endpoints/index.ts'), 'utf8');
-        expect(endpointsIndex).toContain('get: getSalesOrders,');
-        expect(endpointsIndex).toContain('delete: deleteSalesOrders,');
-        expect(endpointsIndex).not.toContain('putSalesOrders');
+        expect(endpointsIndex).toContain("import { salesOrdersContract } from 'common/types/salesOrders';");
+        expect(endpointsIndex).toContain("import { byId } from './byId';");
+        expect(endpointsIndex).toContain('export const salesOrdersEndpoints = defineEndpoints(salesOrdersContract, { list, byId, create, remove });');
 
-        const endpoint = await fs.readFile(path.join(projectDir, 'api/src/controllers/salesOrders/endpoints/postSalesOrders.ts'), 'utf8');
-        expect(endpoint).toContain('export const postSalesOrders: Endpoint<SalesOrdersPostRequest, SalesOrdersPostResponse>');
+        const endpoint = await fs.readFile(path.join(projectDir, 'api/src/controllers/salesOrders/endpoints/create.ts'), 'utf8');
+        expect(endpoint).toContain('/** POST ?endpoint=create */');
+        expect(endpoint).toContain('export const create: Endpoint<SalesOrdersCreateRequest, SalesOrdersCreateResponse>');
+        expect(endpoint).not.toContain('{{');
+
+        const sharedTypes = await fs.readFile(path.join(projectDir, 'common/types/salesOrders.ts'), 'utf8');
+        expect(sharedTypes).toContain("import { defineContract } from './api';");
+        expect(sharedTypes).toContain('export interface SalesOrdersByIdRequest {\n    [parameter: string]: string | undefined;\n}');
+        expect(sharedTypes).toContain('export interface SalesOrdersCreateRequest {\n    [field: string]: unknown;\n}');
+        expect(sharedTypes).toContain('    byId: { request: SalesOrdersByIdRequest; response: SalesOrdersByIdResponse };');
+        expect(sharedTypes).toContain("export const salesOrdersContract = defineContract<SalesOrdersEndpoints>({\n    list: { method: 'GET' },\n    byId: { method: 'GET' },\n    create: { method: 'POST' },\n    remove: { method: 'DELETE' },\n});");
 
         const object = await fs.readFile(path.join(projectDir, 'netsuite/Objects/customscript_demo_sales_orders.xml'), 'utf8');
         expect(object).toContain('<restlet scriptid="customscript_demo_sales_orders">');
@@ -86,18 +113,16 @@ describe('generateController', () => {
         expect(netsuite).toContain("salesOrders: { kind: 'restlet', scriptId: 'customscript_demo_sales_orders', deployId: 'customdeploy_demo_sales_orders' },");
 
         const clientApi = await fs.readFile(path.join(projectDir, 'client/src/api/salesOrdersApi.ts'), 'utf8');
-        expect(clientApi).toContain("import { callEndpoint } from './apiClient';");
-        expect(clientApi).toContain('export function fetchSalesOrders');
-        expect(clientApi).toContain('export function deleteSalesOrders');
-        expect(clientApi).not.toContain('updateSalesOrders');
+        expect(clientApi).toContain("import { createApiClient } from './apiClient';");
+        expect(clientApi).toContain('export const salesOrdersApi = createApiClient(scripts.salesOrders, salesOrdersContract);');
     });
 
     it('writes the same endpoints behind a suitelet transport', async () => {
-        const result = await generateController({ projectDir, config, controllerName: 'report', methods: ['get'], suitelet: true });
+        const result = await generateController({ projectDir, config, controllerName: 'report', endpoints: [{ name: 'list', method: 'get' }], suitelet: true });
         expect(result.writtenFiles).toEqual([
             'api/src/controllers/report/reportController.ts',
             'api/src/controllers/report/endpoints/index.ts',
-            'api/src/controllers/report/endpoints/getReport.ts',
+            'api/src/controllers/report/endpoints/list.ts',
             'netsuite/Objects/customscript_demo_report.xml',
             'common/types/report.ts',
             'client/src/api/reportApi.ts',
@@ -115,15 +140,17 @@ describe('generateController', () => {
     });
 
     it('never overwrites and leaves nothing behind on refusal', async () => {
-        await generateController({ projectDir, config, controllerName: 'orders', methods: ['get'], suitelet: false });
-        await expect(generateController({ projectDir, config, controllerName: 'orders', methods: ['get'], suitelet: false }))
+        const endpoints = [{ name: 'list', method: 'get' as const }];
+        await generateController({ projectDir, config, controllerName: 'orders', endpoints, suitelet: false });
+        await expect(generateController({ projectDir, config, controllerName: 'orders', endpoints, suitelet: false }))
             .rejects.toThrow(/already/);
     });
 
     it('enforces the script id budget and camelCase names', async () => {
-        await expect(generateController({ projectDir, config, controllerName: 'Orders', methods: ['get'], suitelet: false }))
+        const endpoints = [{ name: 'list', method: 'get' as const }];
+        await expect(generateController({ projectDir, config, controllerName: 'Orders', endpoints, suitelet: false }))
             .rejects.toThrow(/camelCase/);
-        await expect(generateController({ projectDir, config, controllerName: 'a'.repeat(30), methods: ['get'], suitelet: false }))
+        await expect(generateController({ projectDir, config, controllerName: 'a'.repeat(30), endpoints, suitelet: false }))
             .rejects.toThrow(/at most/);
     });
 });

@@ -52,10 +52,10 @@ Script ids are `customscript_<prefix>_<name>` and NetSuite caps them at 40 chara
 Inside a generated project:
 
 ```sh
-npm run add:controller -- orders --methods get,post
+npm run add:controller -- orders --endpoints list:get,byId:get,create:post
 ```
 
-writes `api/src/controllers/orders/` with one endpoint file per method, its SDF script object, shared request/response types, a client API module, and registers `scripts.orders` in `common/netsuite.ts`. Add `--suitelet` to serve the same endpoints from a Suitelet instead of a Restlet.
+writes `api/src/controllers/orders/` with one file per endpoint (the controller's actions, each with its HTTP method), its SDF script object, shared request/response types with the endpoint contract, a client API module with one typed function per endpoint, and registers `scripts.orders` in `common/netsuite.ts`. A bare name in `--endpoints` answers GET; without the flag you get a single `list`. Add `--suitelet` to serve the same endpoints from a Suitelet instead of a Restlet.
 
 ## Deploying
 

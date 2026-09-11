@@ -49,11 +49,11 @@ const addCommand = program.command('add').description('Add a piece to an existin
 
 addCommand
     .command('controller')
-    .description('Add a controller folder (transport file + one endpoint per method) with its SDF object, shared types and client API module.')
+    .description('Add a controller folder (transport file + one file per endpoint) with its contract, SDF object, shared types and client API module.')
     .argument('<name>', 'camelCase controller name, e.g. orders (becomes controllers/orders/).')
-    .option('--methods <list>', 'Comma-separated HTTP methods: get,post,put,delete.', 'get')
+    .option('--endpoints <list>', 'Comma-separated endpoints as name:method, e.g. list:get,byId:get,create:post. A bare name answers GET.', 'list')
     .option('--suitelet', 'Serve the endpoints from a Suitelet instead of a Restlet.')
-    .action(async (name: string, options: { methods?: string; suitelet?: boolean }) => {
+    .action(async (name: string, options: { endpoints?: string; suitelet?: boolean }) => {
         await runAddController(name, options);
     });
 
