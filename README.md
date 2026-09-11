@@ -8,16 +8,20 @@ npm create netsuite-project@latest MyApp
 npx create-netsuite-project MyApp
 ```
 
-The generated project is a small monorepo: a Vite + React 19 + Tailwind 4 client served by a Suitelet, a webpack-built SuiteScript API where **every controller is its own script** (transport-agnostic endpoints served by a Restlet or a Suitelet, switchable in one file), a shared `common/` workspace holding every NetSuite identifier in one file, typed data access through [`@amerilux/netsuite-repository`](https://www.npmjs.com/package/@amerilux/netsuite-repository), instrumented `N/*` calls through [`@amerilux/netsuite-wrapper`](https://www.npmjs.com/package/@amerilux/netsuite-wrapper), Vitest everywhere, ESLint, and deployment scripts around the SuiteCloud CLI.
+The generated project is a small monorepo: a Vite + React 19 + Tailwind 4 client served by a Suitelet, a webpack-built SuiteScript API where **every controller is its own script** (transport-agnostic endpoints served by a Restlet or a Suitelet, switchable in one file), a shared `common/` workspace holding the decorated record models and every script id, typed data access through [`@amerilux/netsuite-repository`](https://www.npmjs.com/package/@amerilux/netsuite-repository), instrumented `N/*` calls through [`@amerilux/netsuite-wrapper`](https://www.npmjs.com/package/@amerilux/netsuite-wrapper), Vitest everywhere, ESLint, and deployment scripts around the SuiteCloud CLI.
 
 ## What you get
 
 ```
 MyApp/
-  common/netsuite.ts        record types, field ids, script ids, File Cabinet names
+  common/models/            decorated record models; each declares its record type and field ids
+  common/netsuite.ts        app names, script ids, and any id no model owns
+  common/types/             request/response shapes and each controller's endpoint contract
   api/src/controllers/      one folder per controller: endpoints/ + a Restlet or Suitelet file (customers/ to start)
   api/src/host/             the Suitelet that serves the SPA
-  api/src/models/           decorated models; `npm run generate` writes the typed context
+  api/src/services/         decisions: open the unit of work, call repositories, shape the reply
+  api/src/repositories/     query and write functions over the unit of work; generated/ comes from `npm run generate`
+  api/src/specifications/   query predicates, one module per record type
   client/src/               React app: TanStack Router (file-based routes under src/routes, hash history), TanStack Query, Tailwind
   client/server.ts          local dev proxy that signs OAuth 2.0 calls to your sandbox
   netsuite/                 SDF project: manifest, deploy.xml, Objects/, FileCabinet/ (build output)
