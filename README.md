@@ -1,11 +1,11 @@
-# create-netsuite-project
+# @amerilux/create-netsuite-project
 
 Scaffold a Suitelet-hosted React application for NetSuite in one command.
 
 ```sh
-npm create netsuite-project@latest MyApp
+npm create @amerilux/netsuite-project@latest MyApp
 # or
-npx create-netsuite-project MyApp
+npx @amerilux/create-netsuite-project MyApp
 ```
 
 The generated project is a small monorepo: a Vite + React 19 + Tailwind 4 client served by a Suitelet, a webpack-built SuiteScript API where **every controller is its own script** (transport-agnostic endpoints served by a Restlet or a Suitelet, switchable in one file), a shared `common/` workspace holding the decorated record models and every script id, typed data access through [`@amerilux/netsuite-repository`](https://www.npmjs.com/package/@amerilux/netsuite-repository), instrumented `N/*` calls through [`@amerilux/netsuite-wrapper`](https://www.npmjs.com/package/@amerilux/netsuite-wrapper), Vitest everywhere, ESLint, and deployment scripts around the SuiteCloud CLI.
