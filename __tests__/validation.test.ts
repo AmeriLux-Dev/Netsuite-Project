@@ -5,7 +5,6 @@ import {
     isValidNpmPackageName,
     remainingObjectNameBudget,
     SCRIPT_ID_MAX_LENGTH,
-    validateControllerName,
     validateObjectName,
     validatePrefix,
     validateProjectName,
@@ -62,16 +61,6 @@ describe('script id budget', () => {
         expect(validateObjectName('Orders', 'demo')).toBeDefined();
         expect(validateObjectName('1orders', 'demo')).toBeDefined();
         expect(validateObjectName('sales_orders', 'demo')).toBeUndefined();
-    });
-});
-
-describe('validateControllerName', () => {
-    it('requires camelCase without the Controller suffix', () => {
-        expect(validateControllerName('orders')).toBeUndefined();
-        expect(validateControllerName('salesOrders2')).toBeUndefined();
-        expect(validateControllerName('Orders')).toBeDefined();
-        expect(validateControllerName('sales_orders')).toBeDefined();
-        expect(validateControllerName('ordersController')).toMatch(/suffix/);
     });
 });
 

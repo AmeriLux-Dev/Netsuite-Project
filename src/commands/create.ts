@@ -2,7 +2,6 @@ import { existsSync, promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { defaultPrefixForProjectName, toKebabCase, toPascalCase, toTitleCase } from '../naming.js';
-import { PROJECT_CONFIG_FILE_NAME } from '../projectConfig.js';
 import { isInteractiveTerminal, promptConfirm, promptSelect, promptText, ui } from '../prompts.js';
 import { initializeGitRepository, readGitUserName } from '../steps/git.js';
 import { installDependencies } from '../steps/install.js';
@@ -16,6 +15,9 @@ import {
     validateProjectName,
     type ProjectType,
 } from '../validation.js';
+
+/** `.netsuite-project.json`: written by the scaffold; records the template, its ref, the prefix and the chosen features. */
+const PROJECT_CONFIG_FILE_NAME = '.netsuite-project.json';
 
 export interface CreateCommandOptions {
     directory?: string;
@@ -247,8 +249,8 @@ export async function runCreate(options: CreateCommandOptions, cliVersion: strin
         'npm run dev                          # Vite + local restlet proxy',
         '',
         'The customers controller and page are an example. Replace them with your own',
-        '(npm run add:controller -- <name>) or delete them; npm run deploy refuses to upload',
-        'the example so it never clutters a File Cabinet.',
+        '(HOW-TO-USE.md, Adding a controller; the add-controller skill in Claude Code) or delete them;',
+        'npm run deploy refuses to upload the example so it never clutters a File Cabinet.',
         '',
         'npx suitecloud account:setup         # once per account, writes the gitignored project.json',
         'npm run deploy                       # build, then suitecloud project:deploy',

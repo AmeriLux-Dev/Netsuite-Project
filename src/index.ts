@@ -1,5 +1,4 @@
 import { Command } from 'commander';
-import { runAddController } from './commands/addController.js';
 import { runCreate, type CreateCommandOptions } from './commands/create.js';
 import { PromptCancelledError, ui } from './prompts.js';
 import { DEFAULT_TEMPLATE_REF, DEFAULT_TEMPLATE_REPOSITORY } from './template/fetch.js';
@@ -43,18 +42,6 @@ const createCommand = program
         }
         const options: CreateCommandOptions = { ...(rawOptions as CreateCommandOptions), directory, explicitOptions };
         await runCreate(options, cliVersion);
-    });
-
-const addCommand = program.command('add').description('Add a piece to an existing project.');
-
-addCommand
-    .command('controller')
-    .description('Add a controller folder (transport file + one file per endpoint) with its contract, SDF object, shared types and client API module.')
-    .argument('<name>', 'camelCase controller name, e.g. orders (becomes controllers/orders/).')
-    .option('--endpoints <list>', 'Comma-separated endpoints as name:method, e.g. list:get,byId:get,create:post. A bare name answers GET.', 'list')
-    .option('--suitelet', 'Serve the endpoints from a Suitelet instead of a Restlet.')
-    .action(async (name: string, options: { endpoints?: string; suitelet?: boolean }) => {
-        await runAddController(name, options);
     });
 
 program.parseAsync(process.argv).catch((error: unknown) => {

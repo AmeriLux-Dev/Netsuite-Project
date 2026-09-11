@@ -18,7 +18,6 @@ export const PREFIX_MIN_LENGTH = 2;
 export const PREFIX_MAX_LENGTH = 10;
 
 export const OBJECT_NAME_PATTERN = /^[a-z][a-z0-9_]*$/;
-export const CONTROLLER_NAME_PATTERN = /^[a-z][A-Za-z0-9]*$/;
 
 export const PROJECT_TYPES = ['react-app'] as const;
 export type ProjectType = (typeof PROJECT_TYPES)[number];
@@ -72,17 +71,6 @@ export function validateObjectName(objectName: string, prefix: string): string |
     const budget = remainingObjectNameBudget(prefix);
     if (objectName.length > budget) {
         return `Name must be at most ${budget} characters with prefix "${prefix}" (script ids are capped at ${SCRIPT_ID_MAX_LENGTH}).`;
-    }
-    return undefined;
-}
-
-export function validateControllerName(controllerName: string): string | undefined {
-    if (!controllerName) return 'Controller name is required.';
-    if (!CONTROLLER_NAME_PATTERN.test(controllerName)) {
-        return 'Controller name must be camelCase: start with a lowercase letter, letters and digits only.';
-    }
-    if (controllerName.endsWith('Controller')) {
-        return 'Leave the "Controller" suffix off; it is added for you.';
     }
     return undefined;
 }

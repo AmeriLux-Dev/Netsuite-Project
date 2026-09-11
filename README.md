@@ -14,9 +14,10 @@ The generated project is a small monorepo: a Vite + React 19 + Tailwind 4 client
 
 ```
 MyApp/
-  common/models/            decorated record models; each declares its record type and field ids
+  common/model/             decorated record models; each declares its record type and field ids
+  common/dto/               request and response shapes of each controller, picked from the generated entity types
+  common/types/             api.ts, one endpoint contract per controller, models.gen.ts (generated entity types)
   common/netsuite.ts        app names, script ids, and any id no model owns
-  common/types/             request/response shapes and each controller's endpoint contract
   api/src/controllers/      one folder per controller: endpoints/ + a Restlet or Suitelet file (customers/ to start)
   api/src/host/             the Suitelet that serves the SPA
   api/src/services/         decisions: interpret the request, call repositories, shape the reply
@@ -26,6 +27,8 @@ MyApp/
   client/server.ts          local dev proxy that signs OAuth 2.0 calls to your sandbox
   netsuite/                 SDF project: manifest, deploy.xml, Objects/, FileCabinet/ (build output)
   scripts/deploy.mjs        build → suitecloud project:deploy (or file:upload only)
+  scripts/checkStructure.mjs run by npm run lint: every script's pieces (ids, SDF object, controller, contract, DTOs, client) agree
+  .claude/skills/           add-controller: the recipe Claude Code follows to add a controller
   README.md                 the application record: purpose, owners, dependencies, deployment, support, decisions
   HOW-TO-USE.md             how to build, run, test, deploy and extend the project
   CLAUDE.md                 project brief for Claude Code
@@ -51,21 +54,15 @@ Every prompt has a flag, so the command works unattended:
 
 `--yes` accepts every default. `--ref <gitref>`, `--repo <owner/repo>` and `--local-template <path>` control where the template comes from; by default the CLI downloads `react-app` from [netsuite-project-templates](https://github.com/AmeriLux-Dev/netsuite-project-templates) at the ref pinned in its own `package.json`, so a given CLI version always scaffolds the same template.
 
-Script ids are `customscript_<prefix>_<name>` and NetSuite caps them at 40 characters, so the prefix is 2 to 10 lowercase characters and controller names are checked against the remaining budget.
+Script ids are `customscript_<prefix>_<name>` and NetSuite caps them at 40 characters, so the prefix is 2 to 10 lowercase characters; the project's structure check keeps every later script id within the budget.
 
 ## Adding a controller
 
-Inside a generated project:
-
-```sh
-npm run add:controller -- orders --endpoints list:get,byId:get,create:post
-```
-
-writes `api/src/controllers/orders/` with one file per endpoint (the controller's actions, each with its HTTP method), its SDF script object, shared request/response types with the endpoint contract, a client API module with one typed function per endpoint, and registers `scripts.orders` in `common/netsuite.ts`. A bare name in `--endpoints` answers GET; without the flag you get a single `list`. Add `--suitelet` to serve the same endpoints from a Suitelet instead of a Restlet.
+A controller is one deployed script with named endpoints (`orders` with `list`, `byId`, `create`): a scripts entry, DTOs, a contract, one file per endpoint, the controller file, its SDF object and a client API module. The generated project documents the eight pieces in HOW-TO-USE.md, ships an `add-controller` skill for Claude Code that writes them, and its `npm run lint` runs a structure check that fails until they all exist and agree (ids, transport, endpoint names). The `customers` controller is the reference.
 
 ## Deploying
 
-The scaffold never deploys. The customers controller and page it generates are marked as example code, and the project's `npm run deploy` refuses to run while any marked file is present, so the example never clutters a File Cabinet. Replace it with `npm run add:controller`, or delete it, then:
+The scaffold never deploys. The customers controller and page it generates are marked as example code, and the project's `npm run deploy` refuses to run while any marked file is present, so the example never clutters a File Cabinet. Replace it with your own controller, or delete it, then:
 
 ```sh
 npx suitecloud account:setup   # once per account; writes the gitignored project.json

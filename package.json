@@ -1,6 +1,6 @@
 {
   "name": "@amerilux/create-netsuite-project",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Scaffold a Suitelet-hosted React application for NetSuite: Vite client, webpack AMD API, one script per controller.",
   "license": "MIT",
   "type": "module",
@@ -32,7 +32,7 @@
   ],
   "templateSource": {
     "repository": "AmeriLux-Dev/netsuite-project-templates",
-    "ref": "v0.1.0"
+    "ref": "v0.2.0"
   },
   "scripts": {
     "build": "tsup",
