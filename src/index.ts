@@ -20,7 +20,7 @@ const createCommand = program
     .argument('[directory]', 'Folder to create; its base name is the project name unless --name is given.')
     .option('--name <name>', 'Project name (PascalCase or kebab-case, 2-40 characters).')
     .option('--prefix <prefix>', 'Script id prefix: 2-10 lowercase letters or digits.')
-    .option('--author <author>', 'Author or owning team, written to package.json and the README.')
+    .option('--author <author>', 'Author or owning team, written to package.json and the README owners table.')
     .option('--description <text>', 'One-line project description.')
     .option('--performance-tracker', 'Enable PerformanceTracker telemetry through netsuite-wrapper.')
     .option('--no-performance-tracker', 'Disable telemetry (the default).')

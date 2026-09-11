@@ -26,6 +26,8 @@ MyApp/
   client/server.ts          local dev proxy that signs OAuth 2.0 calls to your sandbox
   netsuite/                 SDF project: manifest, deploy.xml, Objects/, FileCabinet/ (build output)
   scripts/deploy.mjs        build → suitecloud project:deploy (or file:upload only)
+  README.md                 the application record: purpose, owners, dependencies, deployment, support, decisions
+  HOW-TO-USE.md             how to build, run, test, deploy and extend the project
   CLAUDE.md                 project brief for Claude Code
   probity.config.ts         agent guardrails (Probity), wired up in .claude/settings.json; only with --probity
 ```
