@@ -44,7 +44,7 @@ const RULES = [
     {
         name: 'company name outside the public packages and repository',
         pattern: /amerilux/i,
-        allow: ['@amerilux/netsuite-wrapper', '@amerilux/netsuite-repository', 'github.com/AmeriLux-Dev', 'AmeriLux-Dev/', 'AmeriLux International'],
+        allow: ['@amerilux/*', 'github.com/AmeriLux-Dev', 'AmeriLux-Dev/'],
     },
     ...loadLocalRules(),
 ];
