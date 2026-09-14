@@ -35,17 +35,13 @@ const RULES = [
         pattern: new RegExp(`\\bcust(?:om)?(?:script|deploy|record|list|entity|body|item)_(?!(?:${ALLOWED_CUSTOM_ID_PREFIXES.map(escapeRegExp).join('|')})(?:_|\\b))[A-Za-z0-9]+`, 'i'),
     },
     { name: 'SuiteCloud auth selection (project.json content)', pattern: /"defaultAuthId"\s*:\s*"(?!<)[^"]+"/ },
-    { name: 'e-mail address that is not a documented placeholder', pattern: /[A-Za-z0-9._%+-]+@(?!example\.com|acme\.example|users\.noreply\.github\.com)[A-Za-z0-9.-]+\.[a-z]{2,}/, allow: ['@amerilux/netsuite-'] },
+    { name: 'e-mail address that is not a documented placeholder', pattern: /[A-Za-z0-9._%+-]+@(?!example\.com|acme\.example|users\.noreply\.github\.com)[A-Za-z0-9.-]+\.[a-z]{2,}/ },
     { name: 'private key material', pattern: /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/ },
     { name: 'token-looking string', pattern: /\b(?:ghp_[A-Za-z0-9]{20,}|glpat-[A-Za-z0-9_-]{20,}|xox[abp]-[A-Za-z0-9-]{10,}|AKIA[0-9A-Z]{16}|eyJ[A-Za-z0-9_-]{30,}\.[A-Za-z0-9_-]{20,})\b/ },
-    { name: 'local machine path', pattern: /(?:[A-Za-z]:\\|\/home\/|\/Users\/)(?!temp\b)[A-Za-z0-9._-]+/i, allow: ['C:\\\\temp', 'C:\\temp'] },
+    // The drive letter must start a word, so regex source such as `prefix:\s` is not a path.
+    { name: 'local machine path', pattern: /(?:\b[A-Za-z]:\\|\/home\/|\/Users\/)(?!temp\b)[A-Za-z0-9._-]+/i, allow: ['C:\\\\temp', 'C:\\temp'] },
     // Four octets, so semver ranges such as ^10.10.0 do not match.
     { name: 'local IPv4 address', pattern: /\b(?:10\.\d{1,3}|192\.168|172\.(?:1[6-9]|2\d|3[01]))\.\d{1,3}\.\d{1,3}\b/ },
-    {
-        name: 'company name outside the public packages and repository',
-        pattern: /amerilux/i,
-        allow: ['@amerilux/*', 'github.com/AmeriLux-Dev', 'AmeriLux-Dev/'],
-    },
     ...loadLocalRules(),
 ];
 
