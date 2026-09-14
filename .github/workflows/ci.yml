@@ -36,12 +36,14 @@ jobs:
   scaffold:
     # Scaffolds from the template repository at the ref named in package.json (templateSource):
     # exactly what a release of this CLI downloads.
+    # Pull requests run Ubuntu only for fast feedback; pushes to main add Windows, where the shell
+    # quoting, .cmd shims, path separators and CRLF checkouts the CLI handles are actually exercised.
     name: Scaffold with the template (${{ matrix.os }})
     needs: cli
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: ${{ github.event_name == 'push' && fromJSON('["ubuntu-latest", "windows-latest"]') || fromJSON('["ubuntu-latest"]') }}
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
