@@ -103,7 +103,7 @@ node dist/index.js ./Sandbox --local-template ../netsuite-project-templates/reac
 
 ### Releasing
 
-1. If the template changed, tag and push a release in the template repository first, then set `templateSource.ref` here to that tag.
+1. If the template changed, tag and push a release in the template repository first, then set `templateSource.ref` here to that tag. Template tags and CLI versions are numbered independently; the pin is the only link.
 2. Bump `version` in `package.json`.
 3. Tag `v<version>` and push the tag. The release workflow verifies the tag matches, checks that the pinned template ref exists, runs the checks and publishes through the npm Trusted Publisher configured for this repository (no token secret; provenance is attached automatically).
 
