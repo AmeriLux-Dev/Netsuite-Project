@@ -34,9 +34,9 @@ jobs:
           "
 
   scaffold:
-    # Scaffolds from the template repository at the ref pinned in package.json (templateSource):
+    # Scaffolds from the template repository at the ref named in package.json (templateSource):
     # exactly what a release of this CLI downloads.
-    name: Scaffold with the pinned template (${{ matrix.os }})
+    name: Scaffold with the template (${{ matrix.os }})
     needs: cli
     strategy:
       fail-fast: false
@@ -49,7 +49,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - name: Read the pinned template source
+      - name: Read the template source
         id: template
         shell: bash
         run: |
@@ -83,12 +83,12 @@ jobs:
           registry-url: https://registry.npmjs.org
           cache: npm
       - run: npm ci
-      - name: Pinned template ref exists
+      - name: Template ref exists
         run: |
           REPOSITORY=$(node -p "require('./package.json').templateSource.repository")
           REF=$(node -p "require('./package.json').templateSource.ref")
           if ! git ls-remote --exit-code "https://github.com/$REPOSITORY.git" "$REF" > /dev/null; then
-            echo "templateSource.ref $REF does not exist on $REPOSITORY. Tag the template repository first, then pin that tag in package.json."; exit 1
+            echo "templateSource.ref $REF does not exist on $REPOSITORY. Set templateSource.ref in package.json to a branch or tag that exists there."; exit 1
           fi
           echo "Scaffolds from $REPOSITORY@$REF"
       - run: npm run build

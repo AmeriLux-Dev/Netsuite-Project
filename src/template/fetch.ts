@@ -7,8 +7,8 @@ import { extract } from 'tar';
  * Downloads `<projectType>` from a GitHub ref of the template repository as a tarball and
  * extracts just that subtree. No git checkout, no extra dependency beyond `tar`.
  *
- * The defaults come from package.json's `templateSource` field (injected at build time), so a
- * CLI release always scaffolds from one pinned template ref.
+ * The defaults come from package.json's `templateSource` field (injected at build time). The ref is
+ * normally `main`, so every scaffold uses the current template; `--ref` freezes it to a tag.
  */
 
 export const DEFAULT_TEMPLATE_REPOSITORY = __TEMPLATE_REPOSITORY__;

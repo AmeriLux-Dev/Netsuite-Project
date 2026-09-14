@@ -30,7 +30,7 @@ const createCommand = program
     .option('--git', 'Initialise a git repository with a first commit (default).')
     .option('--no-git', 'Skip git.')
     .option('-y, --yes', 'Accept every default instead of prompting.')
-    .option('--ref <gitref>', `Template git ref to download (default: ${DEFAULT_TEMPLATE_REF}, pinned by this release).`)
+    .option('--ref <gitref>', `Template git ref to download (default: ${DEFAULT_TEMPLATE_REF}).`)
     .option('--repo <owner/repo>', `GitHub repository holding the templates (default: ${DEFAULT_TEMPLATE_REPOSITORY}).`)
     .option('--local-template <path>', 'Scaffold from a template folder on disk instead of downloading.')
     .option('--project-type <type>', `Template flavour: ${PROJECT_TYPES.join(', ')}.`)

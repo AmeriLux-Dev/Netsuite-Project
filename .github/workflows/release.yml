@@ -1,7 +1,7 @@
 name: Release
 
 # Tag v<version> (matching package.json) to publish. The template the release scaffolds from is
-# pinned in package.json (templateSource) and must already exist as a ref on the template repository.
+# named in package.json (templateSource, normally the template repository's main) and must exist as a ref there.
 #
 # A tag-triggered run uses this file as it exists at the tagged commit. If the workflow itself needs
 # fixing, push the fix to main and run this workflow manually with the tag to publish: the manual run
@@ -46,12 +46,12 @@ jobs:
             echo "Tag v$TAG does not match package.json version $VERSION"; exit 1
           fi
           echo "Publishing $RELEASE_TAG"
-      - name: Pinned template ref exists
+      - name: Template ref exists
         run: |
           REPOSITORY=$(node -p "require('./package.json').templateSource.repository")
           REF=$(node -p "require('./package.json').templateSource.ref")
           if ! git ls-remote --exit-code "https://github.com/$REPOSITORY.git" "$REF" > /dev/null; then
-            echo "templateSource.ref $REF does not exist on $REPOSITORY. Tag the template repository first, then pin that tag in package.json."; exit 1
+            echo "templateSource.ref $REF does not exist on $REPOSITORY. Set templateSource.ref in package.json to a branch or tag that exists there."; exit 1
           fi
           echo "Scaffolds from $REPOSITORY@$REF"
       - run: npm run typecheck

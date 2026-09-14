@@ -45,7 +45,7 @@ function describeTemplatesCheckout() {
 }
 
 console.log(`Template repository: ${templatesRepositoryDir} (${describeTemplatesCheckout()})`);
-console.log(`Pinned for release:  ${packageJson.templateSource.repository}@${packageJson.templateSource.ref}`);
+console.log(`Default template ref: ${packageJson.templateSource.repository}@${packageJson.templateSource.ref}`);
 
 // npm is a .cmd shim on Windows and needs a shell; node does not.
 run('npm', ['run', 'build'], repoRoot, isWindows);

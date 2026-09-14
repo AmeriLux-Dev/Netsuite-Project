@@ -51,7 +51,7 @@ Every prompt has a flag, so the command works unattended:
 | Install dependencies | `--install` / `--no-install` | yes |
 | Initialise git | `--git` / `--no-git` | yes |
 
-`--yes` accepts every default. `--ref <gitref>`, `--repo <owner/repo>` and `--local-template <path>` control where the template comes from; by default the CLI downloads `react-app` from [netsuite-project-templates](https://github.com/AmeriLux-Dev/netsuite-project-templates) at the ref pinned in its own `package.json`, so a given CLI version always scaffolds the same template.
+`--yes` accepts every default. `--ref <gitref>`, `--repo <owner/repo>` and `--local-template <path>` control where the template comes from; by default the CLI downloads `react-app` from [netsuite-project-templates](https://github.com/AmeriLux-Dev/netsuite-project-templates) at the ref set in its own `package.json`, which is `main`, so every scaffold uses the current template. Pass `--ref <tag>` to freeze it.
 
 Script ids are `customscript_<prefix>_<name>` and NetSuite caps them at 40 characters, so the prefix is 2 to 10 lowercase characters; the project's structure check keeps every later script id within the budget.
 
@@ -85,10 +85,10 @@ This repository holds only the CLI. The templates it renders live in [netsuite-p
 src/                  the CLI: commands, prompts, template download and render, the controller generator
 __tests__/            unit tests (vitest)
 scripts/              private-reference scan and the end-to-end wrapper
-.github/workflows/    CI (checks, scaffold with the pinned template on Linux and Windows, secret scan) and release
+.github/workflows/    CI (checks, scaffold with the template repository's main on Linux and Windows, secret scan) and release
 ```
 
-`templateSource` in `package.json` pins the template repository and git ref a release downloads by default; `--repo` and `--ref` override it at run time.
+`templateSource` in `package.json` names the template repository and the git ref the CLI downloads by default (`main`); `--repo` and `--ref` override it at run time.
 
 ### Developing
 
@@ -99,13 +99,13 @@ npm run e2e                 # build, then run the template repository's end-to-e
 node dist/index.js ./Sandbox --local-template ../netsuite-project-templates/react-app --prefix sbx --yes --no-install --no-git
 ```
 
-`npm run e2e` expects a checkout of the template repository at `../netsuite-project-templates`; set `NETSUITE_PROJECT_TEMPLATES_DIR` to use another path. CI runs the same check against the pinned ref.
+`npm run e2e` expects a checkout of the template repository at `../netsuite-project-templates`; set `NETSUITE_PROJECT_TEMPLATES_DIR` to use another path. CI runs the same check against the template repository's `main`.
 
 ### Releasing
 
-1. If the template changed, tag and push a release in the template repository first, then set `templateSource.ref` here to that tag. Template tags and CLI versions are numbered independently; the pin is the only link.
+1. Template changes need no CLI release: the CLI scaffolds from the template repository's `main`. Release the CLI only when the CLI itself changed. A template change that needs a new CLI feature must wait for that CLI release, and the templates repository's CI (which scaffolds with the CLI's `main`) is the guard.
 2. Bump `version` in `package.json`.
-3. Tag `v<version>` and push the tag. The release workflow verifies the tag matches, checks that the pinned template ref exists, runs the checks and publishes through the npm Trusted Publisher configured for this repository (no token secret; provenance is attached automatically).
+3. Tag `v<version>` and push the tag. The release workflow verifies the tag matches, checks that the template ref exists, runs the checks and publishes through the npm Trusted Publisher configured for this repository (no token secret; provenance is attached automatically).
 
 CI runs the same pre-flight checks and a dry-run publish on every pull request, so most release problems surface before tagging. If the release workflow itself needs fixing after a tag exists, push the fix to `main` and run the Release workflow manually from the Actions tab with that tag: the manual run uses the workflow from `main` but publishes the tagged commit, so the tag never needs to move.
 
