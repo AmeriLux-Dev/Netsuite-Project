@@ -32,7 +32,7 @@
   ],
   "templateSource": {
     "repository": "AmeriLux-Dev/netsuite-project-templates",
-    "ref": "v0.2.0"
+    "ref": "v0.3.0"
   },
   "scripts": {
     "build": "tsup",
