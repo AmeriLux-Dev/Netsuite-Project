@@ -25,7 +25,7 @@ MyApp/
   api/src/scripts.gen.ts    generated from the controllers: every script by name, for createSuiteletClient
   api/src/_host/            boilerplate: the Suitelet that serves the SPA; nothing is added there
   client/src/               React app: TanStack Router (file-based routes under src/routes, hash history), TanStack Query, Tailwind
-  client/src/api/           generated from the controllers by `npm run generate`: every request and response type, every endpoint type, one typed client per controller the browser calls, and a copy of the entity types
+  client/src/api/           generated from the controllers by `npm run generate`: one module per controller (its request and response types, the entity types it names, its endpoint type and, for a controller the browser calls, its client), re-exported by index.gen.ts under the controller's name
   client/src/app.gen.ts     generated copy of netsuite.ts
   client/server.ts          local dev proxy that signs OAuth 2.0 calls to your sandbox
   netsuite/                 SDF project: manifest, deploy.xml, Objects/, FileCabinet/ (build output)
