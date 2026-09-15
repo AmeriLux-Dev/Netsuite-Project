@@ -19,7 +19,7 @@ export const RENAMED_FILES: Record<string, string> = {
 
 export const SUBSTITUTED_EXTENSIONS = new Set([
     '.ts', '.tsx', '.js', '.cjs', '.mjs', '.json', '.html', '.xml', '.md', '.css',
-    '.yml', '.yaml', '.txt', '.example',
+    '.yml', '.yaml', '.txt', '.example', '.code-snippets',
 ]);
 
 export const SUBSTITUTED_FILE_NAMES = new Set(['_gitignore', '_npmrc', '.env.example', '.gitignore', '.npmrc']);

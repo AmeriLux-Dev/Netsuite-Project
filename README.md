@@ -30,7 +30,8 @@ MyApp/
   netsuite/                 SDF project: manifest, deploy.xml, Objects/, FileCabinet/ (build output)
   scripts/deploy.mjs        build → suitecloud project:deploy (or file:upload only)
   scripts/checkStructure.mjs run by npm run lint: every script's pieces (declaration, exports, SDF object) agree
-  .claude/skills/           add-controller: the recipe Claude Code follows to add a controller
+  .vscode/                  VS Code snippets for a controller, an endpoint, a repository and a specifications file
+  .claude/                  Claude Code settings (and the Probity hook with --probity)
   README.md                 the application record: purpose, owners, dependencies, deployment, support, decisions
   HOW-TO-USE.md             how to build, run, test, deploy and extend the project
   CLAUDE.md                 project brief for Claude Code
@@ -60,7 +61,7 @@ Script ids are `customscript_<prefix>_<name>` and NetSuite caps them at 40 chara
 
 ## Adding a controller
 
-A controller is one deployed script with named endpoints (`orders` with `list`, `byId`, `create`): a scripts entry, DTOs, a contract, one file per endpoint, the controller file, its SDF object and, when the browser calls it, a client API module. The generated project walks through the pieces step by step in HOW-TO-USE.md (adding a controller, an endpoint, a model, a page, a helper script running as another role), ships an `add-controller` skill for Claude Code that follows the same steps, and its `npm run lint` runs a structure check that fails until every piece exists and they agree (ids, transport, endpoint names). The `user` and `userRoles` controllers are the reference.
+A controller is one deployed script with named endpoints (`orders` with `list`, `byId`, `create`): one controller file holding the request and response shapes, the endpoints and the script declaration, plus its SDF object; `npm run generate` writes the client module from it. The generated project walks through the pieces step by step in HOW-TO-USE.md (adding a controller, an endpoint, a model, a page, a helper script running as another role), ships VS Code snippets that emit each file in that shape, and its `npm run lint` runs a structure check that fails until every piece exists and they agree (ids, transport, endpoint names). The `user` and `userRoles` controllers are the reference.
 
 ## Deploying
 

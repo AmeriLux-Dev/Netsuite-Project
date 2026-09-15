@@ -87,6 +87,7 @@ describe('isSubstitutedFile', () => {
         expect(isSubstitutedFile('a.ts')).toBe(true);
         expect(isSubstitutedFile('a.xml')).toBe(true);
         expect(isSubstitutedFile('.env.example')).toBe(true);
+        expect(isSubstitutedFile('netsuite-project.code-snippets')).toBe(true);
         expect(isSubstitutedFile('_gitignore')).toBe(true);
         expect(isSubstitutedFile('logo.png')).toBe(false);
         expect(isSubstitutedFile('.gitkeep')).toBe(false);
