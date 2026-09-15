@@ -30,7 +30,7 @@ MyApp/
   netsuite/                 SDF project: manifest, deploy.xml, Objects/, FileCabinet/ (build output)
   scripts/deploy.mjs        build → suitecloud project:deploy (or file:upload only)
   scripts/checkStructure.mjs run by npm run lint: every script's pieces (declaration, exports, SDF object) agree
-  .vscode/                  VS Code snippets for a controller, an endpoint, a repository and a specifications file
+  .vscode/                  VS Code snippets (nsp…) for a controller, an endpoint, a repository and a specifications file
   .claude/                  Claude Code settings (and the Probity hook with --probity)
   README.md                 the application record: purpose, owners, dependencies, deployment, support, decisions
   HOW-TO-USE.md             how to build, run, test, deploy and extend the project
